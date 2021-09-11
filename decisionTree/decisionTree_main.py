@@ -26,10 +26,14 @@
 # Boolean Function???
 
 
+
+
 #%% Global Imports
 import pandas as pd 
 import numpy as np
 import sys
+
+
 
 
 #%% Variable Presets
@@ -47,6 +51,8 @@ data_file = 'car/train.csv'
 labels = ['buying', 'maint', 'doors', 'persons', 'lug_boot', 'safety', 'label']
 
 
+
+
 #%% Main Function
 
 def main():
@@ -60,94 +66,76 @@ def main():
     for idx in np.arange(0, np.shape(trainData)[1]):
         attr_dict.update({labels[idx]: np.unique(trainData[:,idx]).tolist()})
 
-
-    ### Begin Loop to Create Decision Tree
-    print('Begin decision tree loop...')
+    ### Determine Head Node & Create Data Frame Containing Decision Tree
+    print('Determine Head Node...')
     avail_attributes = np.arange(0, len(labels)-1)
     level = 0
+    
+    headNode = pickAttribute(trainData, avail_attributes)
+    avail_attributes = np.delete(avail_attributes, headNode)
+    
+    
+    ### Begin Loop to Create Decision Tree
+    print('Begin decision tree loop...')
+    
+    avail_attributes = np.arange(0, len(labels)-1)
+    level = 0
+    
     while level < maxTreeDepth:
+        
         ### Determine Head Node
         headNode = pickAttribute(trainData, avail_attributes)
         
+        ### Remove Now Chosen Attribute
+        avail_attributes = np.delete(avail_attributes, headNode)
         
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        # ### Calculate Total Entropy/GiniIndex/MajorityError
-        # label_attr, count = np.unique(trainData[:,len_labels], return_counts=1)
-        # total = calcInformationGain(count, sum(count))
-        # dataLen = np.shape(trainData)[0]
-        
-        # ### Calculate Entropy/GiniIndex/MajorityError for Each Label
-        # attr_informationGain = np.zeros((len_labels,1))
-        # for attrx in np.arange(0, len_labels):   # loop through each attribute
-        #     print(labels[attrx])
-        #     attrSubset, attrCount = np.unique(trainData[:,attrx], return_counts=1)
-        #     attrSubset_informationLoss = np.zeros((len(attrSubset), 1))
-            
-        #     for attrSubsetx in np.arange(0, len(attrSubset)):          # loop through each sub attribute
-        #         # print(attrSubset[attrSubsetx])
-        #         subsetIdx = [i for i in range(dataLen) if trainData[i, attrx] == attrSubset[attrSubsetx]]
-        #         labelSubset, labelCount = np.unique(trainData[subsetIdx, len_labels], return_counts=1)
-                
-        #         attrSubset_informationLoss[attrSubsetx] = calcInformationGain(labelCount, attrCount[attrSubsetx]) * (attrCount[attrSubsetx]/dataLen)
-                
-        #     ### Calculate Expected Value 
-        #     attr_informationGain[attrx] = total - sum(attrSubset_informationLoss)
-            
-        # ### Information Loss
-        # print(labels[int(np.argmax(attr_informationGain, axis = 0))])
-
-        
-                
-            
-            
-        
-
-            
-            
+         
     
 
 #%% Pick Attribute that Best Splits Data
 
-def pickAttribute(trainData, avail_attributes):
+def pickAttribute(trainingData, avail_attributes):
+    ### Local Variables
+    data_lngth = np.shape(trainingData)[0]
     total_attributes = len(avail_attributes)
+    attributes_infoGain = np.zeros((total_attributes,1))
         
     ### Calculate Total Entropy/GiniIndex/MajorityError
-    label_attr, count = np.unique(trainData[:,total_attributes], return_counts=1)
-    total = calcInformationGain(count, sum(count))
-    dataLen = np.shape(trainData)[0]
+    label_ctgrs, label_cnt = np.unique(trainingData[:,total_attributes],     \
+                                       return_counts=1)
+    total_info = calcInformationGain(label_cnt, sum(label_cnt))
     
-    ### Calculate Entropy/GiniIndex/MajorityError for Each Label
-    attr_informationGain = np.zeros((total_attributes,1))
-    for attrx in np.arange(0, total_attributes):   # loop through each attribute
-        print(labels[attrx])
-        attrSubset, attrCount = np.unique(trainData[:,attrx], return_counts=1)
-        attrSubset_informationLoss = np.zeros((len(attrSubset), 1))
+    ### Calculate Entropy/GiniIndex/MajorityError for Each Attribute
+    for attrX in np.arange(0, total_attributes):
+        # print(labels[avail_attributes[attrX]])
+        attr_ctgrs, attr_cnt = np.unique(trainingData[:,attrX], return_counts=1)
         
-        for attrSubsetx in np.arange(0, len(attrSubset)):          # loop through each sub attribute
-            # print(attrSubset[attrSubsetx])
-            subsetIdx = [i for i in range(dataLen) if trainData[i, attrx] == attrSubset[attrSubsetx]]
-            labelSubset, labelCount = np.unique(trainData[subsetIdx, total_attributes], return_counts=1)
+        ### Create Array for Info Loss For Each Attribute's Category
+        attr_ctgrs_infoLoss = np.zeros((len(attr_ctgrs), 1))
+        
+        ### Loop Through Each Attribute's Category
+        for attr_ctgrsX in np.arange(0, len(attr_ctgrs)):
+            # print(attr_ctgrs[attr_ctgrsX])
+            attr_ctgrs_idx = [i for i in range(data_lngth) if 
+                              trainingData[i, attrX] == attr_ctgrs[attr_ctgrsX]]
+            label_ctgrs, label_cnt = np.unique(trainingData[attr_ctgrs_idx, 
+                                                            total_attributes], return_counts=1)
             
-            attrSubset_informationLoss[attrSubsetx] = calcInformationGain(labelCount, attrCount[attrSubsetx]) * (attrCount[attrSubsetx]/dataLen)
+            attr_ctgrs_infoLoss[attr_ctgrsX] = calcInformationGain(
+                label_cnt, attr_cnt[attr_ctgrsX]) * (attr_cnt[attr_ctgrsX]/data_lngth)
             
         ### Calculate Expected Value 
-        attr_informationGain[attrx] = total - sum(attrSubset_informationLoss)
+        attributes_infoGain[attrX] = total_info - sum(attr_ctgrs_infoLoss)
         
     ### Information Loss
-    print(labels[int(np.argmax(attr_informationGain, axis = 0))])
+    print(labels[int(np.argmax(attributes_infoGain, axis = 0))])
     
-    return int(np.argmax(attr_informationGain, axis = 0))
+    return int(np.argmax(attributes_infoGain, axis = 0))
+
+
 
 
 #%% Function Containing the Alorithms
@@ -172,54 +160,16 @@ def calcInformationGain(counts, total):
             xx
             
     else:
-        sys.exit('My error message')
+        sys.exit('Incorrect Algorithm Type')
         
     
     return xx
 
 
+
+
 #%% MAIN
 main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -58,7 +58,6 @@ labels = ['buying', 'maint', 'doors', 'persons', 'lug_boot', 'safety', 'label']
 def main():
     ### Load Data
     print('Load data and attributes...')
-    
     trainData = pd.read_csv(data_file, sep=',', header=None)
     trainData = trainData.to_numpy()
     
@@ -66,30 +65,50 @@ def main():
     for idx in np.arange(0, np.shape(trainData)[1]):
         attr_dict.update({labels[idx]: np.unique(trainData[:,idx]).tolist()})
 
+    ### Preset Variables & Arrays
+    avail_attributes    = np.arange(0, len(labels)-1) 
+    used_attributes     = np.empty(0)
+    decisionTree        = pd.DataFrame()
+    dtOutcome           = pd.DataFrame()
+    dtOutcome[labels[len(labels)-1]] = []
+    
     ### Determine Head Node & Create Data Frame Containing Decision Tree
     print('Determine Head Node...')
-    avail_attributes = np.arange(0, len(labels)-1)
-    level = 0
+    headNode            = pickAttribute(trainData, avail_attributes)
+    decisionTree[labels[headNode]] = attr_dict[labels[headNode]]
+    used_attributes     = np.append(used_attributes, headNode)
+    used_attributes     = used_attributes.astype(int)
+    avail_attributes    = np.delete(avail_attributes, headNode)
     
-    headNode = pickAttribute(trainData, avail_attributes)
-    avail_attributes = np.delete(avail_attributes, headNode)
-    
-    
-    ### Begin Loop to Create Decision Tree
-    print('Begin decision tree loop...')
-    
-    avail_attributes = np.arange(0, len(labels)-1)
-    level = 0
-    
-    while level < maxTreeDepth:
+    ### Loop to Create a Greater Than One Level Decision Tree
+    while len(decisionTree.columns) < maxTreeDepth:
+        print('Determine ' + str(len(decisionTree.columns)+1) + ' Layer')
+        data_lngth = np.shape(trainData)[0]
+        dt = decisionTree.to_numpy()
         
-        ### Determine Head Node
-        headNode = pickAttribute(trainData, avail_attributes)
+        ### Loop Through Each Available Attribute Combination
+        for branchX in range(0, len(decisionTree)):
+            decision_branch_idx = [i for i in range(data_lngth) if 
+                              trainData[i, used_attributes] == dt[branchX,:]]
+            
+            trainDataX = trainData[:, np.append(avail_attributes,6).tolist()]
+            
+            branch_attr = pickAttribute(trainDataX[decision_branch_idx,:], avail_attributes)
+            
+            ### Add Attribute to Branch
+            decisionTree[labels[branch_attr]] = attr_dict[labels[branch_attr]]
+            used_attributes     = np.append(used_attributes, branch_attr)
+            avail_attributes    = np.delete(avail_attributes, branch_attr)
         
-        ### Remove Now Chosen Attribute
-        avail_attributes = np.delete(avail_attributes, headNode)
-        
-        
+    
+    
+    
+    ### Finish Off The End of the Decision Tree By Deciding Most Likely Ending
+    dtOutcome = mostLikelyOutcome(decisionTree, dtOutcome, used_attributes, trainData)
+    
+    
+    ### Save Decision Tree
+    # decisionTree & dtOutcome
         
         
          
@@ -168,8 +187,58 @@ def calcInformationGain(counts, total):
 
 
 
+#%% Determine Most Likely Outcome For Decision Tree Branch
+
+def mostLikelyOutcome(decisionTree, dtOutcome, used_attributes, trainData):
+    ### Preset Variables
+    data_lngth = np.shape(trainData)[0]
+    used_attributes = used_attributes.astype(int)
+    dt = decisionTree.to_numpy()
+    
+    for idx in range(0, np.shape(dt)[0]):
+        ## Calculate the Most Likely Outcome
+        decision_branch_idx = [i for i in range(data_lngth) if 
+                              trainData[i, used_attributes] == dt[idx,:]]
+        
+        outcome_ctgrs, outcome_cnt = np.unique(
+            trainData[decision_branch_idx,len(labels)-1], return_counts=1)
+        
+        dtOutcome.loc[idx, 'label'] = outcome_ctgrs[int(np.argmax(outcome_cnt, axis = 0))]
+        
+        
+    return dtOutcome
+
+
+
+
 #%% MAIN
 main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

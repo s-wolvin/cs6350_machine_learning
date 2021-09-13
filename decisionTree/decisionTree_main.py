@@ -39,7 +39,7 @@ import sys
 #%% Variable Presets
 
 # 1 through 6
-maxTreeDepth = 2
+maxTreeDepth = 5
 
 # 'Entropy', 'GiniIndex', 'MajorityError'
 algorithmType = 'Entropy'
@@ -77,55 +77,54 @@ def main():
     
     ### Loop to Create a Greater Than One Level Decision Tree
     while np.shape(decisionTree_attr)[1] < (maxTreeDepth):
-        print('Determine ' + str((np.shape(decisionTree_attr)[1])+1) + ' Layer')
+        print('Determine ' + str((np.shape(decisionTree_attr)[1])+1) + ' Layer...')
         data_lngth = np.shape(trainData)[0]
-        branchX = 0
         
-        ### Determine Used and Available Attributes
-        used_attributes, avail_attributes = whichAttributes(decisionTree_attr, branchX)
-        
-        ### Determine Next Node
-        decision_branch_idx = [i for i in range(data_lngth) if 
-                          trainData[i, used_attributes] == decisionTree_ctgr[branchX,:]]
-        trainDataX = trainData[:, np.append(avail_attributes,6).tolist()]
-        branch_attr = pickAttribute(trainDataX[decision_branch_idx,:], avail_attributes)
-        
-        ### Add Attribute to Branch
-        # decisionTree_attrX = np.array([], ndmin = 2)
-        # decisionTree_ctgrX = np.array([], ndmin = 2)
-        decisionTree_attrX = np.column_stack(
-            [[decisionTree_attr[branchX]] * len(attr_dict[labels[branch_attr]]), 
-              [labels[branch_attr]]* len(attr_dict[labels[branch_attr]])])
-        decisionTree_ctgrX = np.column_stack(
-            [[decisionTree_ctgr[branchX]] * len(attr_dict[labels[branch_attr]]),
-              np.array(attr_dict[labels[branch_attr]], ndmin=2).T])
+        ### Create Temporary Arrays
+        decisionTree_attrX = np.zeros((0,np.shape(decisionTree_attr)[1]+1))
+        decisionTree_ctgrX = np.zeros((0,np.shape(decisionTree_ctgr)[1]+1))
         
         ### Loop Through Each Available Attribute Combination ###
-        for branchX in range(1, np.shape(decisionTree_attr)[0]):
+        for branchX in range(0, np.shape(decisionTree_attr)[0]):
             ### Determine Used and Available Attributes
             used_attributes, avail_attributes = whichAttributes(decisionTree_attr, branchX)
             
             ### Determine Next Node
             decision_branch_idx = [i for i in range(data_lngth) if 
-                              trainData[i, used_attributes] == decisionTree_ctgr[branchX,:]]
+                              np.array_equal(trainData[i, used_attributes], decisionTree_ctgr[branchX,:])]
             trainDataX = trainData[:, np.append(avail_attributes,6).tolist()]
             branch_attr = pickAttribute(trainDataX[decision_branch_idx,:], avail_attributes)
             
-            ### Add Attribute to Branch
-            decisionTree_attrX = np.concatenate((decisionTree_attrX, np.column_stack(
-                [[decisionTree_attr[branchX]] * len(attr_dict[labels[branch_attr]]), 
-                 [labels[branch_attr]]* len(attr_dict[labels[branch_attr]])])))
+            ### Check if Attribute Has Been Used Before
+            if np.array_equal(labels[branch_attr], decisionTree_attr[branchX,np.shape(decisionTree_attr)[1]-1]) or decisionTree_attr[branchX,np.shape(decisionTree_attr)[1]-1] == '':
+                print('Attribute has been used before')
+                xx = np.column_stack([[decisionTree_attr[branchX]], ['']])
+                decisionTree_attrX = np.concatenate([decisionTree_attrX, xx])
                 
-            decisionTree_ctgrX = np.concatenate((decisionTree_ctgrX, np.column_stack(
-                [[decisionTree_ctgr[branchX]] * len(attr_dict[labels[branch_attr]]),
-                 np.array(attr_dict[labels[branch_attr]], ndmin=2).T])))
+                xx = np.column_stack([[decisionTree_ctgr[branchX]],['']])
+                decisionTree_ctgrX = np.concatenate([decisionTree_ctgrX, xx])
+                
+            elif not(np.array_equal(labels[branch_attr], decisionTree_attr[branchX])):
+                ### Add Attribute to Branch
+                xx = np.column_stack(
+                    [[decisionTree_attr[branchX]] * len(attr_dict[labels[branch_attr]]), 
+                     [labels[branch_attr]]* len(attr_dict[labels[branch_attr]])])
+                decisionTree_attrX = np.concatenate([decisionTree_attrX, xx])
+                
+                xx = np.column_stack(
+                    [[decisionTree_ctgr[branchX]] * len(attr_dict[labels[branch_attr]]),
+                     np.array(attr_dict[labels[branch_attr]], ndmin=2).T])
+                decisionTree_ctgrX = np.concatenate([decisionTree_ctgrX, xx])
+            else:
+                print('WTF just happened')
             
-        
+        ### Move Temporary Arrays into Permanent Arrays
         decisionTree_attr = decisionTree_attrX
         decisionTree_ctgr = decisionTree_ctgrX
     
     
     ### Finish Off The End of the Decision Tree By Deciding Most Likely Ending
+    print('')
     dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, dtOutcome, used_attributes, trainData)
     
     
@@ -163,7 +162,11 @@ def pickAttribute(trainingData, avail_attributes):
             attr_ctgrs_idx = [i for i in range(data_lngth) if 
                               trainingData[i, attrX] == attr_ctgrs[attr_ctgrsX]]
             label_ctgrs, label_cnt = np.unique(trainingData[attr_ctgrs_idx, 
-                                                            total_attributes], return_counts=1)
+                                                            total_attributes], return_counts=1)            
+            
+            if len(label_cnt) == 1:
+                print('help')
+            
             
             attr_ctgrs_infoLoss[attr_ctgrsX] = calcInformationGain(
                 label_cnt, attr_cnt[attr_ctgrsX]) * (attr_cnt[attr_ctgrsX]/data_lngth)
@@ -179,7 +182,7 @@ def pickAttribute(trainingData, avail_attributes):
 
 
 
-#%% Function Containing the Alorithms
+#%% Function Containing the Algorithms
 
 def calcInformationGain(counts, total):
     xx = 0
@@ -242,6 +245,10 @@ def whichAttributes(decisionTree_attr, branchX):
     
     ### Loop Through Each Column of the Decision Tree
     for columns in decisionTree_attr[branchX,:]:
+        ### If the Variable is Empty, Skip It. The Branch Has Reached Its End
+        if columns == '':
+            continue
+
         idx = labels.index(columns)
         used_attributes = np.append(used_attributes, idx)
     

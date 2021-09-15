@@ -3,16 +3,19 @@
 # Edited: Sep. 10th, 2021
 
 # SUMMARY
-# We will implement a decision tree learning algorithm for car evaluation task.
-# The dataset is from UCI repository(https://archive.ics.uci.edu/ml/datasets/
-# car+evaluation). Please download the processed dataset (car.zip) from Canvas. 
-# In this task, we have 6 car attributes, and the label is the evaluation of 
-# the car. The attribute and label values are listed in the file 
-# “data-desc.txt”. All the attributes are categorical. The training data are 
-# stored in the file “train.csv”, consisting of 1,000 examples. The test data 
-# are stored in “test.csv”, and comprise 728 examples. In both training and 
-# test datasets, attribute values are separated by commas; the file 
-# “datadesc.txt” lists the attribute names in each column.
+# Next, modify your implementation a little bit to support numerical 
+# attributes. We will use a simple approach to convert a numerical feature to 
+# a binary one. We choose the media (NOT the average) of the attribute values 
+# (in the training set) as the threshold, and examine if the feature is bigger 
+# (or less) than the threshold. We will use another real dataset from UCI 
+# repository(https://archive.ics.uci.edu/ml/datasets/Bank+Marketing). This 
+# dataset contains 16 attributes, including both numerical and categorical 
+# ones. Please download the processed dataset from Canvas (bank.zip). The 
+# attribute and label values are listed in the file “data-desc.txt”. The 
+# training set is the file “train.csv”, consisting of 5, 000 examples, and the 
+# test “test.csv” with 5, 000 examples as well. In both training and test 
+# datasets, attribute values are separated by commas; the file “data-desc.txt” 
+# lists the attribute names in each column.
 
 # INPUT
 # maxTreeDepth  - maximum number of levels on the decision tree
@@ -21,6 +24,8 @@
 # data_file     - file location that contains the training data to create the 
 #                   decision tree
 # labels        - list of column labels used by the data_file
+# isCategory    - indicate if you want to use 'unknown' as its own attribute 
+#                   feature or not
 
 # OUTPUT
 # 'car_decision_tree.csv' - CSV File Containing the Attributes, Catagories, 
@@ -39,18 +44,24 @@ import sys
 
 #%% Variable Presets
 
-# 1 through 6
-maxTreeDepth = 2
+# 1 through 16
+maxTreeDepth = 1
 
 # 'Entropy', 'GiniIndex', 'MajorityError'
 algorithmType = 'Entropy'
 
 # Data set
 data_file_name = 'train'
-data_file = 'car/train.csv'
+data_file = 'bank/' + data_file_name + '.csv'
 
 # column labels
-labels = ['buying', 'maint', 'doors', 'persons', 'lug_boot', 'safety', 'label']
+labels = ['age', 'job', 'marital','education','default','balance','housing',\
+          'loan','contact','day','month','duration','campaign','pdays',\
+              'previous','poutcome','y']
+# labels = ['Outlook','Temperature','Humidity','Winds','Play?']
+    
+# Use Unknown As A Particular Attribute Value
+isCategory = True
 
 
 
@@ -63,12 +74,24 @@ def main():
     trainData = pd.read_csv(data_file, sep=',', header=None)
     trainData = trainData.to_numpy()
     
+    ### Use 'Unknown' As A Particular Attribute Value
+    if not(isCategory):
+        trainData = replaceUnknowns(trainData)
+    
+    ### Create Dictionary and Change Numeric Values Into Categorical Values
     attr_dict = {}
-    for idx in np.arange(0, np.shape(trainData)[1]):
-        attr_dict.update({labels[idx]: np.unique(trainData[:,idx]).tolist()})
-
-    ### Preset Variables & Arrays
-    dtOutcome = np.zeros([0])
+    for idx in range(0, np.shape(trainData)[1]):
+        if type(trainData[0,idx]) == int:
+            attr_dict.update({labels[idx]: ['lower','upper']})
+            
+            median_numeric  = np.median(trainData[:,idx])
+            lower = np.where(trainData[:,idx] < median_numeric)
+            upper = np.where(trainData[:,idx] >= median_numeric)
+            trainData[lower,idx] = 'lower'
+            trainData[upper,idx] = 'upper'
+            
+        else:
+            attr_dict.update({labels[idx]: np.unique(trainData[:,idx]).tolist()})
     
     ### Determine Head Node & Create Data Frame Containing Decision Tree
     print('Determine Head Node...')
@@ -95,7 +118,7 @@ def main():
                 ### Determine Next Node
                 decision_branch_idx = [i for i in range(data_lngth) if 
                                   np.array_equal(trainData[i, used_attributes], decisionTree_ctgr[branchX,:])]
-                trainDataX  = trainData[:, np.append(avail_attributes,6).tolist()]
+                trainDataX  = trainData[:, np.append(avail_attributes,(len(labels)-1)).tolist()]
                 branch_attr = pickAttribute(trainDataX[decision_branch_idx,:], avail_attributes)
                 
                 ### Add Attribute to Branch
@@ -120,18 +143,37 @@ def main():
         decisionTree_attr = decisionTree_attrX
         decisionTree_ctgr = decisionTree_ctgrX
     
-    
     ### Finish Off The End of the Decision Tree By Deciding Most Likely Ending
-    print('')
-    dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, dtOutcome, used_attributes, trainData)
-    
+    dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, used_attributes, trainData)
     
     ### Save Decision Tree
     decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
-    np.savetxt(data_file_name + '_car_decision_tree_' + str(maxTreeDepth) + '.csv', [decisionTree], delimiter=',', fmt='%s')        
-        
-         
     
+    if isCategory:
+        np.savetxt(data_file_name + '_car_decision_tree_' + str(maxTreeDepth) + '_unknownAsAttr.csv', [decisionTree], delimiter=',', fmt='%s')        
+    else:    
+        np.savetxt(data_file_name + '_car_decision_tree_' + str(maxTreeDepth) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')        
+        
+    print('Finished')
+    
+    
+    
+
+#%% Replace the Unknown Value with the Most Common Value
+
+def replaceUnknowns(trainData):
+    for attrX in range(0, np.shape(trainData)[1]):
+        attr_ctgrs, attr_cnt = np.unique(trainData[:,attrX], return_counts=1)
+        mostUsed = attr_ctgrs[int(np.argmax(attr_cnt))]
+        
+        for idx in range(0, np.shape(trainData)[0]):
+            if trainData[idx, attrX] == 'unknown':
+                trainData[idx, attrX] = mostUsed
+
+    return trainData
+
+
+
 
 #%% Pick Attribute that Best Splits Data
 
@@ -147,7 +189,6 @@ def pickAttribute(trainingData, avail_attributes):
     
     ### Calculate Entropy/GiniIndex/MajorityError for Each Attribute
     for attrX in np.arange(0, total_attributes):
-        # print(labels[avail_attributes[attrX]])
         attr_ctgrs, attr_cnt = np.unique(trainingData[:,attrX], return_counts=1)
         
         ### Create Array for Info Loss For Each Attribute's Category
@@ -155,21 +196,20 @@ def pickAttribute(trainingData, avail_attributes):
         
         ### Loop Through Each Attribute's Category
         for attr_ctgrsX in np.arange(0, len(attr_ctgrs)):
-            # print(attr_ctgrs[attr_ctgrsX])
             attr_ctgrs_idx          = [i for i in range(data_lngth) if 
-                              trainingData[i, attrX] == attr_ctgrs[attr_ctgrsX]]
+                              np.array_equal(trainingData[i, attrX], attr_ctgrs[attr_ctgrsX])]
             label_ctgrs, label_cnt  = np.unique(trainingData[attr_ctgrs_idx, 
                                                             total_attributes], return_counts=1)            
             
             attr_ctgrs_infoLoss[attr_ctgrsX] = calcInformationGain(
                 label_cnt, attr_cnt[attr_ctgrsX]) * (attr_cnt[attr_ctgrsX]/data_lngth)
             
+            
         ### Calculate Expected Value 
         attributes_infoGain[attrX] = total_info - sum(attr_ctgrs_infoLoss)
         
     ### Information Loss
     # print(labels[avail_attributes[int(np.argmax(attributes_infoGain, axis = 0))]])
-    
     return avail_attributes[int(np.argmax(attributes_infoGain, axis = 0))]
 
 
@@ -194,12 +234,16 @@ def calcInformationGain(counts, total):
         
     elif algorithmType == 'MajorityError':
         for idx in np.arange(0, length): 
-            xx
+            if len(counts) == 1:
+                xx = 0
+            elif counts[0] > counts[1]:
+                xx = (counts[1] / counts[0])
+            else:
+                xx = (counts[0] / counts[1])
             
     else:
         sys.exit('Incorrect Algorithm Type')
         
-    
     return xx
 
 
@@ -253,9 +297,10 @@ def needAnotherNode(trainData, used_attributes, decisionTree_ctgr):
 
 #%% Determine Most Likely Outcome For Decision Tree Branch
 
-def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, dtOutcome, used_attributes, trainData):
+def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, used_attributes, trainData):
     ### Preset Variables
     data_lngth = np.shape(trainData)[0]
+    dtOutcome = np.zeros([0])
     
     for idx in range(0, np.shape(decisionTree_attr)[0]):
         ## Calculate the Most Likely Outcome
@@ -266,7 +311,11 @@ def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, dtOutcome, used_attr
                               np.array_equal(trainData[i, used_attributes], decisionTree_ctgrX[decisionTree_ctgrX != ''])]
         outcome_ctgrs, outcome_cnt = np.unique(
             trainData[decision_branch_idx,len(labels)-1], return_counts=1)
-        dtOutcome = np.concatenate([dtOutcome, np.array(outcome_ctgrs[int(np.argmax(outcome_cnt, axis = 0))], ndmin=1)])
+        
+        if len(outcome_cnt) == 0:
+            dtOutcome = np.concatenate([dtOutcome, np.array('', ndmin=1)])
+        else:
+            dtOutcome = np.concatenate([dtOutcome, np.array(outcome_ctgrs[int(np.argmax(outcome_cnt, axis = 0))], ndmin=1)])
         
     return dtOutcome
 

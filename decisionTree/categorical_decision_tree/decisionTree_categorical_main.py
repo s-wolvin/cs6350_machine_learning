@@ -23,8 +23,9 @@
 # labels        - list of column labels used by the data_file
 
 # OUTPUT
-# 'car_decision_tree.csv' - CSV File Containing the Attributes, Catagories, 
-#                           and Outcomes of the Decision Tree
+# 'car_dt_' + data_file_name + '_' + algorithmType + '_' + levelNum + '_level.csv' 
+#       - CSV File Containing the Attributes, Catagories, and Outcomes of the 
+#           Decision Tree
 
 
 
@@ -46,7 +47,7 @@ maxTreeDepth = 6
 algorithmType = 'Entropy'
 
 # Data set
-data_file_name = 'test'
+data_file_name = 'train'
 data_file = 'car/' + data_file_name + '.csv'
 
 # column labels
@@ -76,14 +77,12 @@ def main():
     
     ### Save First Level
     dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
-    # decisionTree_attr   = pd.DataFrame(decisionTree_attr)
-    # decisionTree_ctgr   = pd.DataFrame(decisionTree_ctgr)
-    # dtOutcome           = pd.DataFrame(dtOutcome)
-    # decisionTree        = decisionTree_attr.append(decisionTree_ctgr).append(dtOutcome)
-    # decisionTree.to_csv('car_dt_' + data_file_name + '_' + algorithmType + '_' + str(1) + '_level.csv')
+    pd.concat([pd.DataFrame(decisionTree_attr), 
+               pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome)]).to_csv(
+                   'car_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                   str(1) + '_level.csv', index = True, header = True) 
     
     # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
-    # pd.DataFrame.from_dict(data=decisionTree).to_csv('dict_file.csv', header=False)
     # np.savetxt('car_dt_' + data_file_name + '_' + algorithmType + '_' + str(1) + '_level.csv', [decisionTree], delimiter=',', fmt='%s')   
 
     ### Loop to Create a Greater Than One Level Decision Tree
@@ -133,15 +132,14 @@ def main():
         
         ### Save Current Level
         dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
-        decisionTree_attr   = pd.DataFrame(decisionTree_attr)
-        decisionTree_ctgr   = pd.DataFrame(decisionTree_ctgr)
-        dtOutcome           = pd.DataFrame(dtOutcome)
-        decisionTree        = decisionTree_attr.append(decisionTree_ctgr).append(dtOutcome)
-        decisionTree.to_csv('car_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_level.csv')
+        
+        pd.concat([pd.DataFrame(decisionTree_attr), 
+               pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome)]).to_csv(
+                   'car_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                   str(level) + '_level.csv', index = True, header = True) 
         
         # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
         # np.savetxt('car_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_level.csv', [decisionTree], delimiter=',', fmt='%s')    
-        # np.save('car_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_level.csv', [decisionTree])    
 
         ### Next Level Label
         level += 1

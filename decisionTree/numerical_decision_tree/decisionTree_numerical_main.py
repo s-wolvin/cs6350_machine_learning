@@ -45,7 +45,7 @@ import sys
 #%% Variable Presets
 
 # 1 through 16
-maxTreeDepth = 1
+maxTreeDepth = 16
 
 # 'Entropy', 'GiniIndex', 'MajorityError'
 algorithmType = 'Entropy'
@@ -61,7 +61,7 @@ labels = ['age', 'job', 'marital','education','default','balance','housing',\
 # labels = ['Outlook','Temperature','Humidity','Winds','Play?']
     
 # Use Unknown As A Particular Attribute Value
-isCategory = True
+isCategory = False
 
 
 
@@ -99,7 +99,28 @@ def main():
     decisionTree_attr   = np.array([labels[headNode]] * len(attr_dict[labels[headNode]]), ndmin=2).T
     decisionTree_ctgr   = np.array(attr_dict[labels[headNode]], ndmin=2).T
     
+    ### Save First Level
+    dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
+    if isCategory:
+        pd.concat([pd.DataFrame(decisionTree_attr), 
+                   pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome)]).to_csv(
+                       'band_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                       str(1) + '_unknownAsAttr.csv', index = True, header = True)
+    else:    
+        pd.concat([pd.DataFrame(decisionTree_attr), 
+                   pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome)]).to_csv(
+                       'band_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                       str(1) + '_unknownNotAttr.csv', index = True, header = True)
+    
+    # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
+    # if isCategory:
+    #     np.savetxt('band_dt_' + data_file_name + '_' + algorithmType + '_' + str(1) + '_unknownAsAttr.csv', [decisionTree], delimiter=',', fmt='%s')        
+    # else:    
+    #     np.savetxt('bank_dt_' + data_file_name + '_' + algorithmType + '_' + str(1) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')
+    
+    
     ### Loop to Create a Greater Than One Level Decision Tree
+    level = 2
     while np.shape(decisionTree_attr)[1] < (maxTreeDepth) and np.shape(decisionTree_attr)[1] < (len(labels)-1):
         print('Determine ' + str((np.shape(decisionTree_attr)[1])+1) + ' Layer...')
         data_lngth = np.shape(trainData)[0]
@@ -143,18 +164,26 @@ def main():
         decisionTree_attr = decisionTree_attrX
         decisionTree_ctgr = decisionTree_ctgrX
     
-    ### Finish Off The End of the Decision Tree By Deciding Most Likely Ending
-    dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, used_attributes, trainData)
-    
-    ### Save Decision Tree
-    decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
-    
-    if isCategory:
-        np.savetxt(data_file_name + '_car_decision_tree_' + str(maxTreeDepth) + '_unknownAsAttr.csv', [decisionTree], delimiter=',', fmt='%s')        
-    else:    
-        np.savetxt(data_file_name + '_car_decision_tree_' + str(maxTreeDepth) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')        
+        ### Save Decision Tree
+        dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
+        if isCategory:
+            pd.concat([pd.DataFrame(decisionTree_attr), 
+                       pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome)]).to_csv(
+                           'band_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                           str(level) + '_unknownAsAttr.csv', index = True, header = True)
+        else:    
+            pd.concat([pd.DataFrame(decisionTree_attr), 
+                       pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome)]).to_csv(
+                           'band_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                           str(level) + '_unknownNotAttr.csv', index = True, header = True)
         
-    print('Finished')
+        # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
+        # if isCategory:
+        #     np.savetxt('band_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_unknownAsAttr.csv', [decisionTree], delimiter=',', fmt='%s')        
+        # else:    
+        #     np.savetxt('bank_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')
+    
+        level += 1
     
     
     
@@ -297,7 +326,7 @@ def needAnotherNode(trainData, used_attributes, decisionTree_ctgr):
 
 #%% Determine Most Likely Outcome For Decision Tree Branch
 
-def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, used_attributes, trainData):
+def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData):
     ### Preset Variables
     data_lngth = np.shape(trainData)[0]
     dtOutcome = np.zeros([0])

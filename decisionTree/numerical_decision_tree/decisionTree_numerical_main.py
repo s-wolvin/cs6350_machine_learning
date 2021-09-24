@@ -48,7 +48,7 @@ import sys
 maxTreeDepth = 16
 
 # 'Entropy', 'GiniIndex', 'MajorityError'
-algorithmType = 'Entropy'
+algorithmType = 'MajorityError'
 
 # Data set
 data_file_name = 'test'
@@ -61,7 +61,7 @@ labels = ['age', 'job', 'marital','education','default','balance','housing',\
 # labels = ['Outlook','Temperature','Humidity','Winds','Play?']
     
 # Use Unknown As A Particular Attribute Value
-isCategory = True
+isCategory = False
 
 
 
@@ -105,12 +105,12 @@ def main():
     if isCategory:
         pd.concat([pd.DataFrame(decisionTree_attr), 
                    pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
-                       'band_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                       'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
                        str(1) + '_unknownAsAttr.csv', index = True, header = True)
     else:    
         pd.concat([pd.DataFrame(decisionTree_attr), 
                    pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
-                       'band_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                       'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
                        str(1) + '_unknownNotAttr.csv', index = True, header = True)
     
     # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
@@ -171,12 +171,12 @@ def main():
         if isCategory:
             pd.concat([pd.DataFrame(decisionTree_attr), 
                        pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
-                           'band_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                           'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
                            str(level) + '_unknownAsAttr.csv', index = True, header = True)
         else:    
             pd.concat([pd.DataFrame(decisionTree_attr), 
                        pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
-                           'band_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                           'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
                            str(level) + '_unknownNotAttr.csv', index = True, header = True)
         
         # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}

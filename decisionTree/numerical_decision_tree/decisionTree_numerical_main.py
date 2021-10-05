@@ -45,10 +45,10 @@ import sys
 #%% Variable Presets
 
 # 1 through 16
-maxTreeDepth = 16
+maxTreeDepth = 2
 
 # 'Entropy', 'GiniIndex', 'MajorityError'
-algorithmType = 'MajorityError'
+algorithmType = 'Entropy'
 
 # Data set
 data_file_name = 'test'
@@ -61,7 +61,7 @@ labels = ['age', 'job', 'marital','education','default','balance','housing',\
 # labels = ['Outlook','Temperature','Humidity','Winds','Play?']
     
 # Use Unknown As A Particular Attribute Value
-isCategory = False
+isCategory = True
 
 
 

@@ -45,13 +45,10 @@ import sys
 #%% Variable Presets
 
 # 1 through 16
-maxTreeDepth = 2
+maxTreeDepth = 16
 
 # 'Entropy', 'GiniIndex', 'MajorityError'
 algorithmType = 'Entropy'
-
-# number of iterations
-T = 50
 
 # Data set
 data_file_name = 'test'
@@ -96,104 +93,99 @@ def main():
         else:
             attr_dict.update({labels[idx]: np.unique(trainData[:,idx]).tolist()})
     
-    ### Create Array to Hold Sample Weight of Each Example
-    weight = np.zeros([np.shape(trainData)[0],1])
-    weight[:,:] = 1/np.shape(trainData)[0]
+    ### Determine Head Node & Create Data Frame Containing Decision Tree
+    print('Determine Head Node...')
+    headNode            = pickAttribute(trainData, np.arange(0, len(labels)-1) )
+    decisionTree_attr   = np.array([labels[headNode]] * len(attr_dict[labels[headNode]]), ndmin=2)
+    decisionTree_ctgr   = np.array(attr_dict[labels[headNode]], ndmin=2)
     
-    ### Loop Through Each Iteration to Create a Forest of Stumps
-    for tx in range(0, T):
-        ### Scale Weight to be Equal to Total Number of Examples
-        weightData = weight * np.shape(trainData)[0]
+    ### Save First Level
+    dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
+    avg_PredictionError = avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcome)
+    if isCategory:
+        pd.concat([pd.DataFrame(decisionTree_attr), 
+                   pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
+                       'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                       str(1) + '_unknownAsAttr.csv', index = True, header = True)
+    else:    
+        pd.concat([pd.DataFrame(decisionTree_attr), 
+                   pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
+                       'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                       str(1) + '_unknownNotAttr.csv', index = True, header = True)
+    
+    # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
+    # if isCategory:
+    #     np.savetxt('band_dt_' + data_file_name + '_' + algorithmType + '_' + str(1) + '_unknownAsAttr.csv', [decisionTree], delimiter=',', fmt='%s')        
+    # else:    
+    #     np.savetxt('bank_dt_' + data_file_name + '_' + algorithmType + '_' + str(1) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')
+    
+    
+    ### Loop to Create a Greater Than One Level Decision Tree
+    level = 2
+    while np.shape(decisionTree_attr)[0] < (maxTreeDepth) and np.shape(decisionTree_attr)[0] < (len(labels)-1):
+        print('Determine ' + str((np.shape(decisionTree_attr)[0])+1) + ' Layer...')
+        data_lngth = np.shape(trainData)[0]
         
-        ### Determine Head Node & Create Data Frame Containing Decision Tree
-        print('Determine Head Node...')
-        headNode            = pickAttribute(trainData, np.arange(0, len(labels)-1), weightData)
-        decisionTree_attr   = np.array([labels[headNode]] * len(attr_dict[labels[headNode]]), ndmin=2)
-        decisionTree_ctgr   = np.array(attr_dict[labels[headNode]], ndmin=2)
+        ### Create Temporary Arrays
+        decisionTree_attrX = np.zeros((np.shape(decisionTree_attr)[0]+1,0))
+        decisionTree_ctgrX = np.zeros((np.shape(decisionTree_ctgr)[0]+1,0))
         
-        ### Save First Level
-        # dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
-        # avg_PredictionError = avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcome)
+        ### Loop Through Each Available Attribute Combination ###
+        for branchX in range(0, np.shape(decisionTree_attr)[1]):
+            ### Determine Used and Available Attributes
+            used_attributes, avail_attributes = whichAttributes(decisionTree_attr, branchX)
+            
+            ### Determine if Another Row Is Needed
+            if needAnotherNode(trainData, used_attributes, decisionTree_ctgr[:,branchX]):
+                ### Determine Next Node
+                decision_branch_idx = [i for i in range(data_lngth) if 
+                                  np.array_equal(trainData[i, used_attributes], decisionTree_ctgr[:,branchX])]
+                trainDataX  = trainData[:, np.append(avail_attributes,(len(labels)-1)).tolist()]
+                branch_attr = pickAttribute(trainDataX[decision_branch_idx,:], avail_attributes)
+                
+                ### Add Attribute to Branch
+                xx                  = np.column_stack(
+                    [[decisionTree_attr[:,branchX]] * len(attr_dict[labels[branch_attr]]), 
+                     [labels[branch_attr]]* len(attr_dict[labels[branch_attr]])])
+                decisionTree_attrX  = np.column_stack([decisionTree_attrX, xx.T])
+                
+                xx                  = np.column_stack(
+                    [[decisionTree_ctgr[:,branchX]] * len(attr_dict[labels[branch_attr]]),
+                     np.array(attr_dict[labels[branch_attr]], ndmin=2).T])
+                decisionTree_ctgrX  = np.column_stack([decisionTree_ctgrX, xx.T])
+            else:
+                # print('End of Branch')
+                xx = np.column_stack([[decisionTree_attr[:,branchX]], ['']])
+                decisionTree_attrX = np.column_stack([decisionTree_attrX, xx.T])
+                
+                xx = np.column_stack([[decisionTree_ctgr[:,branchX]],['']])
+                decisionTree_ctgrX = np.column_stack([decisionTree_ctgrX, xx.T])
+            
+        ### Move Temporary Arrays into Permanent Arrays
+        decisionTree_attr = decisionTree_attrX
+        decisionTree_ctgr = decisionTree_ctgrX
+    
+        ### Save Decision Tree
+        dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
+        avg_PredictionError = avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcome)
+        if isCategory:
+            pd.concat([pd.DataFrame(decisionTree_attr), 
+                       pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
+                           'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                           str(level) + '_unknownAsAttr.csv', index = True, header = True)
+        else:    
+            pd.concat([pd.DataFrame(decisionTree_attr), 
+                       pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
+                           'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
+                           str(level) + '_unknownNotAttr.csv', index = True, header = True)
+        
+        # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
         # if isCategory:
-        #     pd.concat([pd.DataFrame(decisionTree_attr), pd.DataFrame(decisionTree_ctgr), 
-        #                pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
-        #                    'bank_dt_' + data_file_name + '_' + algorithmType + '_' + str(1) + 
-        #                    '_unknownAsAttr.csv', index = True, header = True)
-        #     decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}                
-        #     np.savetxt('band_dt_' + data_file_name + '_' + algorithmType + '_' + str(1) + '_unknownAsAttr.csv', [decisionTree], delimiter=',', fmt='%s')              
+        #     np.savetxt('band_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_unknownAsAttr.csv', [decisionTree], delimiter=',', fmt='%s')        
         # else:    
-        #     pd.concat([pd.DataFrame(decisionTree_attr), 
-        #                pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
-        #                    'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
-        #                    str(1) + '_unknownNotAttr.csv', index = True, header = True)
-        #     decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
-        #     np.savetxt('bank_dt_' + data_file_name + '_' + algorithmType + '_' + str(1) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')
-
-        
-        ### Loop to Create a Greater Than One Level Decision Tree
-        level = 2
-        while np.shape(decisionTree_attr)[0] < (maxTreeDepth) and np.shape(decisionTree_attr)[0] < (len(labels)-1):
-            print('Determine ' + str((np.shape(decisionTree_attr)[0])+1) + ' Layer...')
-            data_lngth = np.shape(trainData)[0]
-            
-            ### Create Temporary Arrays
-            decisionTree_attrX = np.zeros((np.shape(decisionTree_attr)[0]+1,0))
-            decisionTree_ctgrX = np.zeros((np.shape(decisionTree_ctgr)[0]+1,0))
-            
-            ### Loop Through Each Available Attribute Combination ###
-            for branchX in range(0, np.shape(decisionTree_attr)[1]):
-                ### Determine Used and Available Attributes
-                used_attributes, avail_attributes = whichAttributes(decisionTree_attr, branchX)
-                
-                ### Determine if Another Row Is Needed
-                if needAnotherNode(trainData, used_attributes, decisionTree_ctgr[:,branchX]):
-                    ### Determine Next Node
-                    decision_branch_idx = [i for i in range(data_lngth) if 
-                                      np.array_equal(trainData[i, used_attributes], decisionTree_ctgr[:,branchX])]
-                    trainDataX  = trainData[:, np.append(avail_attributes,(len(labels)-1)).tolist()]
-                    branch_attr = pickAttribute(trainDataX[decision_branch_idx,:], avail_attributes, weightData)
-                    
-                    ### Add Attribute to Branch
-                    xx                  = np.column_stack(
-                        [[decisionTree_attr[:,branchX]] * len(attr_dict[labels[branch_attr]]), 
-                         [labels[branch_attr]]* len(attr_dict[labels[branch_attr]])])
-                    decisionTree_attrX  = np.column_stack([decisionTree_attrX, xx.T])
-                    
-                    xx                  = np.column_stack(
-                        [[decisionTree_ctgr[:,branchX]] * len(attr_dict[labels[branch_attr]]),
-                         np.array(attr_dict[labels[branch_attr]], ndmin=2).T])
-                    decisionTree_ctgrX  = np.column_stack([decisionTree_ctgrX, xx.T])
-                else:
-                    # print('End of Branch')
-                    xx = np.column_stack([[decisionTree_attr[:,branchX]], ['']])
-                    decisionTree_attrX = np.column_stack([decisionTree_attrX, xx.T])
-                    
-                    xx = np.column_stack([[decisionTree_ctgr[:,branchX]],['']])
-                    decisionTree_ctgrX = np.column_stack([decisionTree_ctgrX, xx.T])
-                
-            ### Move Temporary Arrays into Permanent Arrays
-            decisionTree_attr = decisionTree_attrX
-            decisionTree_ctgr = decisionTree_ctgrX
-        
-            ### Save Decision Tree
-            dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
-            avg_PredictionError, weight = avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcome, weight)
-            if isCategory:
-                pd.concat([pd.DataFrame(decisionTree_attr), 
-                           pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
-                               'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
-                               str(level) + '_unknownAsAttr.csv', index = True, header = True)
-                decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
-                # np.savetxt('band_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_unknownAsAttr.csv', [decisionTree], delimiter=',', fmt='%s')
-            else:    
-                pd.concat([pd.DataFrame(decisionTree_attr), 
-                           pd.DataFrame(decisionTree_ctgr), pd.DataFrame(dtOutcome), pd.DataFrame([avg_PredictionError])]).to_csv(
-                               'bank_dt_' + data_file_name + '_' + algorithmType + '_' + 
-                               str(level) + '_unknownNotAttr.csv', index = True, header = True)
-                decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
-                # np.savetxt('bank_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')
-
-            level += 1
+        #     np.savetxt('bank_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')
+    
+        level += 1
     
     
     
@@ -216,7 +208,7 @@ def replaceUnknowns(trainData):
 
 #%% Pick Attribute that Best Splits Data
 
-def pickAttribute(trainingData, avail_attributes, weightData):
+def pickAttribute(trainingData, avail_attributes):
     ### Local Variables
     data_lngth          = np.shape(trainingData)[0]
     total_attributes    = len(avail_attributes)
@@ -224,10 +216,7 @@ def pickAttribute(trainingData, avail_attributes, weightData):
         
     ### Calculate Total Entropy/GiniIndex/MajorityError
     label_ctgrs, label_cnt = np.unique(trainingData[:,total_attributes],return_counts=1)
-    label_wghtd_cnt = [np.sum(weightData[np.where(
-        trainingData[:,total_attributes] == label_ctgrs[i])]) for i in range(len(label_ctgrs))]
-    
-    total_info = calcInformationGain(label_wghtd_cnt, sum(label_cnt))
+    total_info = calcInformationGain(label_cnt, sum(label_cnt))
     
     ### Calculate Entropy/GiniIndex/MajorityError for Each Attribute
     for attrX in np.arange(0, total_attributes):
@@ -241,15 +230,10 @@ def pickAttribute(trainingData, avail_attributes, weightData):
             attr_ctgrs_idx          = [i for i in range(data_lngth) if 
                               np.array_equal(trainingData[i, attrX], attr_ctgrs[attr_ctgrsX])]
             label_ctgrs, label_cnt  = np.unique(trainingData[attr_ctgrs_idx, 
-                                                            total_attributes], return_counts=1)
-            weightDataX = weightData[attr_ctgrs_idx,0]
-            
-            label_wghtd_cnt = [np.sum(weightDataX[np.where(
-                trainingData[attr_ctgrs_idx, total_attributes] == label_ctgrs[i])]) 
-                for i in range(len(label_ctgrs))]
+                                                            total_attributes], return_counts=1)            
             
             attr_ctgrs_infoLoss[attr_ctgrsX] = calcInformationGain(
-                label_wghtd_cnt, attr_cnt[attr_ctgrsX]) * (attr_cnt[attr_ctgrsX]/data_lngth)
+                label_cnt, attr_cnt[attr_ctgrsX]) * (attr_cnt[attr_ctgrsX]/data_lngth)
             
             
         ### Calculate Expected Value 
@@ -369,14 +353,12 @@ def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData):
 
 #%% Calculate Average Prediction Error
 
-def avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcome, weight):
+def avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcome):
     data_lngth = np.shape(trainData)[0]
     total_attributes = np.shape(trainData)[1]-1
     branches = np.shape(decisionTree_attr)[1]
     errors = 0
-    incorrectPredict = np.zeros([0], dtype=int)
     
-    ### loop through each branch and count incorrect predictions
     for idx in range(0, branches):
         dt_ctgr_branch = decisionTree_ctgr[:,idx]
         
@@ -385,23 +367,13 @@ def avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcom
         attr_ctgrs_idx          = [i for i in range(data_lngth) if 
                           np.array_equal(trainData[i, used_attributes], dt_ctgr_branch)]
         
-        incorrectPredIdx = np.asarray(np.where(trainData[attr_ctgrs_idx, total_attributes] != dtOutcome[:,idx]), dtype=int).flatten()
-        attr_ctgrs_idx = np.asarray(attr_ctgrs_idx)
-        incorrectPredict = np.concatenate([incorrectPredict, attr_ctgrs_idx[incorrectPredIdx]])
+        label_ctgrs, label_cnt  = np.unique(trainData[attr_ctgrs_idx, 
+                                                        total_attributes], return_counts=1)
         
-        errors += sum(weight[incorrectPredict])
+        errors += sum(label_cnt[np.where(label_ctgrs != dtOutcome[:,idx])])
         
-    amountOfSay = 0.5 * np.log((1-errors)/(errors))
     
-    for i in range(0, data_lngth):
-        if i in incorrectPredict:
-            weight[i,0] = weight[i,0] * np.exp(amountOfSay)
-        else:
-            weight[i,0] = weight[i,0] * np.exp(-amountOfSay)
-    weight = weight / sum(weight)
-         
-    
-    return errors, weight
+    return errors/data_lngth
 
 
 

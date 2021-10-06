@@ -103,9 +103,7 @@ def main():
             attr_dict.update({labels[idx]: np.unique(trainData[:,idx]).tolist()})
     
     ### Create Every Combination
-    # allNames = sorted(attr_dict)
-    combinations = it.product(*(attr_dict[Name] for Name in labels))
-    
+    comb = createCombinations
     
     
     ### Loop Through Each Iteration to Create a Forest of Stumps

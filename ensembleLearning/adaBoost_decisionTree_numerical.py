@@ -54,7 +54,7 @@ algorithmType = 'Entropy'
 T = 500
 
 # Data set
-data_file_name = 'train'
+data_file_name = 'test'
 data_file = 'bank-1/' + data_file_name + '.csv'
 
 # column labels
@@ -104,12 +104,12 @@ def main():
     ### Loop Through Each Iteration to Create a Forest of Stumps
     for tx in range(0, T):
         print('Iteration ' + str(tx+1))
-        ### Scale Weight to be Equal to Total Number of Examples
-        weightData = weight * np.shape(trainData)[0]
+        # ### Scale Weight to be Equal to Total Number of Examples
+        # weightData = weight * np.shape(trainData)[0]
         
         ### Determine Head Node & Create Data Frame Containing Decision Tree
         # print('Determine Head Node...')
-        headNode            = pickAttribute(trainData, np.arange(0, len(labels)-1), weightData)
+        headNode            = pickAttribute(trainData, np.arange(0, len(labels)-1), weight)
         decisionTree_attr   = np.array([labels[headNode]] * len(attr_dict[labels[headNode]]), ndmin=2)
         decisionTree_ctgr   = np.array(attr_dict[labels[headNode]], ndmin=2)
         
@@ -134,7 +134,7 @@ def main():
                     decision_branch_idx = [i for i in range(data_lngth) if 
                                       np.array_equal(trainData[i, used_attributes], decisionTree_ctgr[:,branchX])]
                     trainDataX  = trainData[:, np.append(avail_attributes,(len(labels)-1)).tolist()]
-                    branch_attr = pickAttribute(trainDataX[decision_branch_idx,:], avail_attributes, weightData)
+                    branch_attr = pickAttribute(trainDataX[decision_branch_idx,:], avail_attributes, weight)
                     
                     ### Add Attribute to Branch
                     xx                  = np.column_stack(
@@ -159,7 +159,7 @@ def main():
             decisionTree_ctgr = decisionTree_ctgrX
         
             ### Save Decision Tree
-            dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
+            dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData, weight)
             avg_PredictionError, weight = avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcome, weight)
             
             prdctnError = np.concatenate([prdctnError, avg_PredictionError])
@@ -210,38 +210,36 @@ def pickAttribute(trainingData, avail_attributes, weightData):
     data_lngth          = np.shape(trainingData)[0]
     total_attributes    = len(avail_attributes)
     attributes_infoGain = np.zeros((total_attributes,1))
-        
+            
+
     ### Calculate Total Entropy/GiniIndex/MajorityError
-    label_ctgrs, label_cnt = np.unique(trainingData[:,total_attributes],return_counts=1)
-    label_wghtd_cnt = [np.sum(weightData[np.where(
-        trainingData[:,total_attributes] == label_ctgrs[i])]) for i in range(len(label_ctgrs))]
+    label_ctgrs = np.unique(trainingData[:,total_attributes])
+    label_wghtd_cnt = [round(np.sum(weightData[np.where(trainingData[:,total_attributes] == label_ctgrs[i])]), 10) for i in range(len(label_ctgrs))]
     
     total_info = calcInformationGain(label_wghtd_cnt, sum(label_wghtd_cnt))
     
+    
+
     ### Calculate Entropy/GiniIndex/MajorityError for Each Attribute
     for attrX in np.arange(0, total_attributes):
         attr_ctgrs, attr_cnt = np.unique(trainingData[:,attrX], return_counts=1)
         
-        attr_wghtd_cnt = [np.sum(weightData[np.where(
-        trainingData[:,attrX] == attr_ctgrs[i])]) for i in range(len(attr_ctgrs))]
+        attr_wghtd_cnt = [round(np.sum(weightData[np.where(trainingData[:,attrX] == attr_ctgrs[i])]), 10) for i in range(len(attr_ctgrs))]
         
         ### Create Array for Info Loss For Each Attribute's Category
         attr_ctgrs_infoLoss = np.zeros((len(attr_ctgrs), 1))
         
-        ### Loop Through Each Attribute's Category
+        
+        ### Loop Through Each Attribute's Categories
         for attr_ctgrsX in np.arange(0, len(attr_ctgrs)):
-            attr_ctgrs_idx          = [i for i in range(data_lngth) if 
-                              np.array_equal(trainingData[i, attrX], attr_ctgrs[attr_ctgrsX])]
-            label_ctgrs, label_cnt  = np.unique(trainingData[attr_ctgrs_idx, 
-                                                            total_attributes], return_counts=1)
-            weightDataX = weightData[attr_ctgrs_idx,0]
+            attr_ctgrs_idx = [i for i in range(data_lngth) if np.array_equal(trainingData[i, attrX], attr_ctgrs[attr_ctgrsX])] # pull label for one attr category
+            label_ctgrs  = np.unique(trainingData[attr_ctgrs_idx, total_attributes])
             
-            label_wghtd_cnt = [np.sum(weightDataX[np.where(
-                trainingData[attr_ctgrs_idx, total_attributes] == label_ctgrs[i])]) 
-                for i in range(len(label_ctgrs))]
+            weightDataX = weightData[attr_ctgrs_idx,0] # pull weights for attr of one label
             
-            attr_ctgrs_infoLoss[attr_ctgrsX] = calcInformationGain(
-                label_wghtd_cnt, attr_wghtd_cnt[attr_ctgrsX]) * (attr_cnt[attr_ctgrsX]/data_lngth)
+            label_wghtd_cnt = [round(np.sum(weightDataX[np.where(trainingData[attr_ctgrs_idx, total_attributes] == label_ctgrs[i])]), 10) / attr_wghtd_cnt[attr_ctgrsX] for i in range(len(label_ctgrs))]
+            
+            attr_ctgrs_infoLoss[attr_ctgrsX] = calcInformationGain(label_wghtd_cnt, attr_wghtd_cnt[attr_ctgrsX]) * (attr_wghtd_cnt[attr_ctgrsX])
             
             
         ### Calculate Expected Value 
@@ -263,12 +261,12 @@ def calcInformationGain(counts, total):
     if algorithmType == 'Entropy':
         for idx in np.arange(0, length): 
             if counts[idx] != 0 and total != 0:
-                xx = xx - (counts[idx]/total)*np.log(counts[idx]/total)
+                xx = xx - (counts[idx])*np.log(counts[idx])
         
     elif algorithmType == 'GiniIndex':
         for idx in np.arange(0, length): 
             if total != 0:
-                xx = xx + (counts[idx]/total)**2
+                xx = xx + (counts[idx])**2
         xx = 1 - xx
         
     elif algorithmType == 'MajorityError':
@@ -334,8 +332,9 @@ def needAnotherNode(trainData, used_attributes, decisionTree_ctgr):
 
 #%% Determine Most Likely Outcome For Decision Tree Branch
 
-def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData):
+def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData, weight):
     ### Preset Variables
+    total_attributes = np.shape(trainData)[1]-1
     data_lngth = np.shape(trainData)[0]
     dtOutcome = np.zeros([0])
     
@@ -346,13 +345,15 @@ def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData):
         
         decision_branch_idx = [i for i in range(data_lngth) if 
                               np.array_equal(trainData[i, used_attributes], decisionTree_ctgrX[decisionTree_ctgrX != ''])]
-        outcome_ctgrs, outcome_cnt = np.unique(
-            trainData[decision_branch_idx,len(labels)-1], return_counts=1)
         
-        if len(outcome_cnt) == 0:
+        outcome_ctgrs = np.unique(trainData[decision_branch_idx,len(labels)-1])
+        
+        outcome_wghtd_cnt = [round(np.sum(weight[np.where(trainData[decision_branch_idx, total_attributes] == outcome_ctgrs[i])]), 10) for i in range(len(outcome_ctgrs))]
+        
+        if len(outcome_wghtd_cnt) == 0:
             dtOutcome = np.concatenate([dtOutcome, np.array('', ndmin=1)])
         else:
-            dtOutcome = np.concatenate([dtOutcome, np.array(outcome_ctgrs[int(np.argmax(outcome_cnt, axis = 0))], ndmin=1)])
+            dtOutcome = np.concatenate([dtOutcome, np.array(outcome_ctgrs[int(np.argmax(outcome_wghtd_cnt, axis = 0))], ndmin=1)])
         
     return np.array([dtOutcome])
 
@@ -385,7 +386,7 @@ def avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcom
         
     errors = sum(weight[incorrectPredict])
     print('Errors: ' + str(errors))
-    amountOfSay = 0.5 * ((np.log((1-errors)/(errors))) / (np.log(np.e)))
+    amountOfSay = 0.5 * (np.log((1-errors)/(errors)))
     print('Amount of Say: ' + str(amountOfSay))
     
     for i in range(0, data_lngth):

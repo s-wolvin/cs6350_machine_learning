@@ -2,9 +2,30 @@
 # Created: Oct. 5th, 2021
 # Edited: Oct. 11th, 2021
 
+# SUMMARY
+# Implement the batch gradient descent algorithm, and tune the learning rate r
+# to ensure the algorithm converges.  To examine convergence, you can watch 
+# the norm of the weight vector difference,‖wt−wt−1‖, at each stept.  if 
+# ‖wt−wt−1‖is less than a tolerance level, say, 10−6, you can conclude that it 
+# converges.  You can initialize your weight vector to be 0.  Please find an 
+# appropriate r such that the  algorithm  converges. To  tune r,  you  can  
+# start  with a relatively big value, say, r= 1, and then gradually decrease 
+# r, say r= 0.5,0.25,0.125,..., until you see the convergence. Report the 
+# learned weight vector, and the learning rate r. Meanwhile, please record the
+# cost function value of the training data at each step, and then draw a 
+# figure shows how the cost function changes along with steps. Use your final 
+# weight vector to calculate the cost function value of the test data.
 
+# INPUT
+# data_file - file location that contains the training data to create the 
+#                   decision tree
+# labels    - list of column labels used by the data_file
+# r         - Learning Rate
+# T         - Number of Iterations
 
-
+# OUTPUT
+# 'cost_vs_iterations.png' - PNG File Showing the Relationship Between the 
+#           Cost Function Value and the Iteration Number for the Training Data
 
 
 
@@ -31,9 +52,12 @@ r = 0.000197
 # number of iterations
 T = 1000
 
-# initial W
-w_matrix = np.zeros([7, T+1])
 
+
+
+#%% Empty Variables
+
+w_matrix = np.zeros([7, T+1])
 norm        = np.zeros([T])
 cost_func   = np.zeros([T])
 
@@ -95,7 +119,6 @@ def main():
 
 
 
-
 #%% Calculate Value of Cost Function with New Values
 
 def costFunction(trainData, w_matrix, tx):
@@ -111,7 +134,7 @@ def costFunction(trainData, w_matrix, tx):
 
 
 
-#%% 
+#%% Calculate the Cost Function of the Test Data
 
 def testCostFunction(w_matrix, tx):
     testData = pd.read_csv('concrete/test.csv', sep=',', header=None)
@@ -133,26 +156,6 @@ def testCostFunction(w_matrix, tx):
 
 #%% Main
 main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

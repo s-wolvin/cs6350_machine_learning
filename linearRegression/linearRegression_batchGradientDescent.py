@@ -24,7 +24,7 @@
 # T         - Number of Iterations
 
 # OUTPUT
-# 'cost_vs_iterations.png' - PNG File Showing the Relationship Between the 
+# 'cost_vs_iterations_4a.png' - PNG File Showing the Relationship Between the 
 #           Cost Function Value and the Iteration Number for the Training Data
 
 
@@ -97,11 +97,11 @@ def main():
         # print('Norm of Weight Vector: ' + str(round(norm[tx], 6)))
         
         ### Report the Cost Function
-        cost_func[tx] = costFunction(trainData, w_matrix, tx)
+        cost_func[tx] = costFunction(trainData, w_matrix, tx+1)
         # print('Cost Function Value: ' + str(round(cost_func[tx], 6)))
         
         
-    test_cost_function = testCostFunction(w_matrix, tx)
+    test_cost_function = testCostFunction(w_matrix, tx+1)
         
     ### Plot Cost Function
     plt.plot(range(T), cost_func)
@@ -110,11 +110,12 @@ def main():
     plt.xlabel('Iterations')
     plt.grid()
     plt.show
-    plt.savefig('cost_vs_iterations.png', dpi = 300)
+    # plt.savefig('cost_vs_iterations_4a.png', dpi = 300)
     
-    print('Final Cost Value: ' + str(cost_func[T-1]))
+    print('Final Cost Value: ' + str(cost_func[tx]))
     print('Test Cost Value: ' + str(test_cost_function))
-    print('Final Norm Value: ' + str(norm[T-1]))
+    print('Final Norm Value: ' + str(norm[tx]))
+    print(w_matrix[:,tx+1])
 
 
 

@@ -1,6 +1,6 @@
 ## Savanna Wolvin
 # Created: Oct. 4th, 2021
-# Edited: Sep. 10th, 2021
+# Edited: Oct. 12th, 2021
 
 # SUMMARY
 # Next, modify your implementation a little bit to support numerical 
@@ -85,9 +85,17 @@ def main():
     attr_dict = {}
     for idx in range(0, np.shape(trainData)[1]):
         if type(trainData[0,idx]) == int:
-            attr_dict.update({labels[idx]: ['lower','upper']})
             
-            median_numeric  = np.median(trainData[:,idx])
+            if idx == 13:
+                attr_dict.update({labels[idx]: ['lower','upper', 'nan']})
+                nan_loc = np.where(trainData[:,idx] != -1)
+                trainData[np.where(trainData[:,idx] == -1),idx] = np.nan
+                median_numeric  = np.median(trainData[nan_loc[0],idx])
+                
+            else:
+               attr_dict.update({labels[idx]: ['lower','upper']})   
+               median_numeric  = np.median(trainData[:,idx])
+            
             lower = np.where(trainData[:,idx] < median_numeric)
             upper = np.where(trainData[:,idx] >= median_numeric)
             trainData[lower,idx] = 'lower'

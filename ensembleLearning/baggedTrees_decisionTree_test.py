@@ -39,7 +39,8 @@ import pandas as pd
 import numpy as np
 import sys
 import random as rd
-import itertools as it
+import matplotlib.pyplot as plt
+# import itertools as it
 
 
 
@@ -91,19 +92,35 @@ def main():
     attr_dict = {}
     for idx in range(0, np.shape(trainData)[1]):
         if type(trainData[0,idx]) == int:
-            attr_dict.update({labels[idx]: ['lower','upper']})
+            if idx == 13:
+                attr_dict.update({labels[idx]: ['lower','upper', 'nan']})
+                
+                nan_loc = np.where(trainData[:,idx] == 'nan')
+                num_loc = np.where(trainData[:,idx] != 'nan')
+                
+                median_numeric  = np.median(trainData[num_loc[0],idx])
+                
+                lower = np.where(trainData[:,idx] < median_numeric)
+                upper = np.where(trainData[:,idx] >= median_numeric)
+                trainData[lower,idx] = 'lower'
+                trainData[upper,idx] = 'upper'
+                trainData[nan_loc[0],idx] = 'nan'
+                
+            else:
+                attr_dict.update({labels[idx]: ['lower','upper']})   
+                median_numeric  = np.median(trainData[:,idx])
             
-            median_numeric  = np.median(trainData[:,idx])
-            lower = np.where(trainData[:,idx] < median_numeric)
-            upper = np.where(trainData[:,idx] >= median_numeric)
-            trainData[lower,idx] = 'lower'
-            trainData[upper,idx] = 'upper'
+                lower = np.where(trainData[:,idx] < median_numeric)
+                upper = np.where(trainData[:,idx] >= median_numeric)
+                trainData[lower,idx] = 'lower'
+                trainData[upper,idx] = 'upper'
             
         else:
             attr_dict.update({labels[idx]: np.unique(trainData[:,idx]).tolist()})
     
-    ### Create Every Combination
-    comb = createCombinations
+    ### Array to Hold Outcomes
+    dtOutcome_all = np.zeros([np.shape(trainData)[0],T], dtype=object)
+    avg_PredictionError = np.zeros([T,1], dtype=object)
     
     
     ### Loop Through Each Iteration to Create a Forest of Stumps
@@ -166,17 +183,43 @@ def main():
             decisionTree_attr = decisionTree_attrX
             decisionTree_ctgr = decisionTree_ctgrX
         
-            ### Save Decision Tree
-            dtOutcome = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainDataBagged)
-            avg_PredictionError = avgPredictionError(trainDataBagged, decisionTree_attr, decisionTree_ctgr, dtOutcome)
-            if isCategory:
-                pd.concat([pd.DataFrame([avg_PredictionError])]).to_csv(
-                               'bank_' + data_file_name + '_baggedTrees_error_' + 
-                               str(level) + '_unknownAsAttr.csv', index = True, header = True)
-            else:    
-                pd.concat([pd.DataFrame([avg_PredictionError])]).to_csv(
-                               'bank_' + data_file_name + '_baggedTrees_error_' + 
-                               str(level) + '_unknownNotAttr.csv', index = True, header = True)
+            level += 1
+        
+        
+        ### Find Decision Tree Outcome
+        dtOutcomeX = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
+        dtOutcome_all[:,tx] = dtOutcomeX[:,0]
+        dtOutcomeX[:] = ''
+        
+        for row in range(np.shape(dtOutcome_all)[0]):
+            labels_outcome, counts_outcome = np.unique(dtOutcome_all[row, np.arange(tx+1)], return_counts = 1)
+            dtOutcomeX[row,0] = labels_outcome[int(np.argmax(counts_outcome, axis = 0))]
+        
+        sum_error = np.where(dtOutcomeX[:,0] != trainData[:,16])
+        sum_error = sum_error[0]
+        avg_PredictionError[tx] = np.shape(sum_error)[0] / np.shape(trainData)[0]
+        
+        fig1 = plt.gcf()
+        plt.plot(np.arange(tx+1) , avg_PredictionError[np.arange(tx+1)])
+        plt.xlabel('Iterations')
+        plt.ylabel('Prediction Error')
+        plt.title('Bagged Decision Tree')
+        # plt.show()
+        fig1.savefig('test_error.png', dpi=300)
+        
+        pd.concat([pd.DataFrame([avg_PredictionError])]).to_csv(
+                'bank_' + data_file_name + '_baggedTrees_error_' + 
+                str(level) + '_unknownAsAttr.csv', index = True, header = True)
+            
+            
+            # if isCategory:
+            #     pd.concat([pd.DataFrame([avg_PredictionError])]).to_csv(
+            #                    'bank_' + data_file_name + '_baggedTrees_error_' + 
+            #                    str(level) + '_unknownAsAttr.csv', index = True, header = True)
+            # else:    
+            #     pd.concat([pd.DataFrame([avg_PredictionError])]).to_csv(
+            #                    'bank_' + data_file_name + '_baggedTrees_error_' + 
+            #                    str(level) + '_unknownNotAttr.csv', index = True, header = True)
             
             # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
             # if isCategory:
@@ -184,7 +227,7 @@ def main():
             # else:    
             #     np.savetxt('bank_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')
         
-            level += 1
+            
     
     
     
@@ -345,7 +388,7 @@ def needAnotherNode(trainData, used_attributes, decisionTree_ctgr):
 def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData):
     ### Preset Variables
     data_lngth = np.shape(trainData)[0]
-    dtOutcome = np.zeros([0])
+    dtOutcome = np.zeros([np.shape(trainData)[0],1], dtype=object)
     
     for idx in range(0, np.shape(decisionTree_attr)[1]):
         ## Calculate the Most Likely Outcome
@@ -358,38 +401,40 @@ def mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData):
             trainData[decision_branch_idx,len(labels)-1], return_counts=1)
         
         if len(outcome_cnt) == 0:
-            dtOutcome = np.concatenate([dtOutcome, np.array('', ndmin=1)])
+            dtOutcome[decision_branch_idx] = ''
+            # dtOutcome = np.concatenate([dtOutcome, np.array('', ndmin=1)])
         else:
-            dtOutcome = np.concatenate([dtOutcome, np.array(outcome_ctgrs[int(np.argmax(outcome_cnt, axis = 0))], ndmin=1)])
+            dtOutcome[decision_branch_idx] = outcome_ctgrs[int(np.argmax(outcome_cnt, axis = 0))]
+            # dtOutcome = np.concatenate([dtOutcome, np.array(outcome_ctgrs[int(np.argmax(outcome_cnt, axis = 0))], ndmin=1)])
         
-    return np.array([dtOutcome])
+    return dtOutcome
 
 
 
 
 #%% Calculate Average Prediction Error
 
-def avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcome):
-    data_lngth = np.shape(trainData)[0]
-    total_attributes = np.shape(trainData)[1]-1
-    branches = np.shape(decisionTree_attr)[1]
-    errors = 0
+# def avgPredictionError(trainData, decisionTree_attr, decisionTree_ctgr, dtOutcome):
+#     data_lngth = np.shape(trainData)[0]
+#     total_attributes = np.shape(trainData)[1]-1
+#     branches = np.shape(decisionTree_attr)[1]
+#     errors = 0
     
-    for idx in range(0, branches):
-        dt_ctgr_branch = decisionTree_ctgr[:,idx]
+#     for idx in range(0, branches):
+#         dt_ctgr_branch = decisionTree_ctgr[:,idx]
         
-        used_attributes, avail_attributes = whichAttributes(decisionTree_attr, idx)
+#         used_attributes, avail_attributes = whichAttributes(decisionTree_attr, idx)
         
-        attr_ctgrs_idx          = [i for i in range(data_lngth) if 
-                          np.array_equal(trainData[i, used_attributes], dt_ctgr_branch)]
+#         attr_ctgrs_idx          = [i for i in range(data_lngth) if 
+#                           np.array_equal(trainData[i, used_attributes], dt_ctgr_branch)]
         
-        label_ctgrs, label_cnt  = np.unique(trainData[attr_ctgrs_idx, 
-                                                        total_attributes], return_counts=1)
+#         label_ctgrs, label_cnt  = np.unique(trainData[attr_ctgrs_idx, 
+#                                                         total_attributes], return_counts=1)
         
-        errors += sum(label_cnt[np.where(label_ctgrs != dtOutcome[:,idx])])
+#         errors += sum(label_cnt[np.where(label_ctgrs != dtOutcome[:,idx])])
         
     
-    return errors/data_lngth
+#     return errors/data_lngth
 
 
 

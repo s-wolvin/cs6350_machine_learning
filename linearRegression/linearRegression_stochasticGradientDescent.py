@@ -1,6 +1,6 @@
 ## Savanna Wolvin
 # Created: Oct. 11th, 2021
-# Edited: Oct. 11th, 2021
+# Edited: Oct. 20th, 2021
 
 # SUMMARY
 # Implement the stochastic gradient descent (SGD) algorithm. You can 
@@ -25,8 +25,6 @@
 # OUTPUT
 # 'cost_vs_iterations_4b.png' - PNG File Showing the Relationship Between the 
 #           Cost Function Value and the Iteration Number for the Training Data
-
-
 
 
 
@@ -149,26 +147,6 @@ def testCostFunction(w_matrix, tx):
 
 #%% Main
 main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

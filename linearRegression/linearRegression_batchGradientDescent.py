@@ -1,6 +1,6 @@
 ## Savanna Wolvin
 # Created: Oct. 5th, 2021
-# Edited: Oct. 11th, 2021
+# Edited: Oct. 20th, 2021
 
 # SUMMARY
 # Implement the batch gradient descent algorithm, and tune the learning rate r
@@ -34,6 +34,7 @@
 import pandas as pd 
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 
 

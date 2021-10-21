@@ -1,4 +1,4 @@
-# Homework 2
+# HW 2: Linear Regression
 
 linearRegression_batchGradientDescent.py -  python script to solve for the optimal weight vector of the concrete data using Batch gradient descent
 run_batchGD.sh - shell script which runs linearRegression_batchGradientDescent.py using python3.8

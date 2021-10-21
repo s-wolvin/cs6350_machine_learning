@@ -28,8 +28,14 @@
 #                   feature or not
 
 # OUTPUT
-# 'car_decision_tree.csv' - CSV File Containing the Attributes, Catagories, 
-#                           and Outcomes of the Decision Tree
+# 'test_train_error.png'    - PNG File showing the training and test error
+#                           at each iteration. Will update as it runs
+# 'bank_baggedTrees_allPredictions_unknownAsAttr_train.csv' - CSV File 
+#                           Containing the training Outcomes of the Bagged 
+#                           Decision Tree at each iteration
+# 'bank_baggedTrees_allPredictions_unknownAsAttr_test.csv' - CSV File 
+#                           Containing the test Outcomes of the Bagged 
+#                           Decision Tree at each iteration
 
 
 
@@ -61,8 +67,9 @@ replacement = True
 n_samples = 5000
 
 # Data set
-data_file_name = 'test'
+data_file_name = 'train'
 data_file = 'bank-1/' + data_file_name + '.csv'
+chpc_path = '/uufs/chpc.utah.edu/common/home/u1324060/cs6350/'
 
 # column labels
 labels = ['age', 'job', 'marital','education','default','balance','housing',\
@@ -81,12 +88,16 @@ isCategory = True
 def main():
     ### Load Data
     print('Load data and attributes...')
-    trainData = pd.read_csv(data_file, sep=',', header=None)
+    trainData = pd.read_csv(chpc_path + data_file, sep=',', header=None)
     trainData = trainData.to_numpy()
+    
+    testData = pd.read_csv(chpc_path + 'bank-1/test.csv', sep=',', header=None)
+    testData = testData.to_numpy()
     
     ### Use 'Unknown' As A Particular Attribute Value
     if not(isCategory):
         trainData = replaceUnknowns(trainData)
+        testData = replaceUnknowns(testData)
     
     ### Create Dictionary and Change Numeric Values Into Categorical Values
     attr_dict = {}
@@ -97,14 +108,21 @@ def main():
                 
                 nan_loc = np.where(trainData[:,idx] == 'nan')
                 num_loc = np.where(trainData[:,idx] != 'nan')
-                
                 median_numeric  = np.median(trainData[num_loc[0],idx])
-                
                 lower = np.where(trainData[:,idx] < median_numeric)
                 upper = np.where(trainData[:,idx] >= median_numeric)
                 trainData[lower,idx] = 'lower'
                 trainData[upper,idx] = 'upper'
                 trainData[nan_loc[0],idx] = 'nan'
+                
+                nan_loc = np.where(testData[:,idx] == 'nan')
+                num_loc = np.where(testData[:,idx] != 'nan')
+                median_numeric  = np.median(testData[num_loc[0],idx])
+                lower = np.where(testData[:,idx] < median_numeric)
+                upper = np.where(testData[:,idx] >= median_numeric)
+                testData[lower,idx] = 'lower'
+                testData[upper,idx] = 'upper'
+                testData[nan_loc[0],idx] = 'nan'
                 
             else:
                 attr_dict.update({labels[idx]: ['lower','upper']})   
@@ -114,13 +132,22 @@ def main():
                 upper = np.where(trainData[:,idx] >= median_numeric)
                 trainData[lower,idx] = 'lower'
                 trainData[upper,idx] = 'upper'
+                
+                median_numeric  = np.median(testData[:,idx])
+            
+                lower = np.where(testData[:,idx] < median_numeric)
+                upper = np.where(testData[:,idx] >= median_numeric)
+                testData[lower,idx] = 'lower'
+                testData[upper,idx] = 'upper'
             
         else:
             attr_dict.update({labels[idx]: np.unique(trainData[:,idx]).tolist()})
     
     ### Array to Hold Outcomes
-    dtOutcome_all = np.zeros([np.shape(trainData)[0],T], dtype=object)
-    avg_PredictionError = np.zeros([T,1], dtype=object)
+    dtOutcome_all_train = np.zeros([np.shape(trainData)[0],T], dtype=object)
+    dtOutcome_all_test = np.zeros([np.shape(testData)[0],T], dtype=object)
+    avg_PredictionError_test = np.zeros([T,1], dtype=object)
+    avg_PredictionError_train = np.zeros([T,1], dtype=object)
     
     
     ### Loop Through Each Iteration to Create a Forest of Stumps
@@ -188,47 +215,56 @@ def main():
         
         ### Find Decision Tree Outcome
         dtOutcomeX = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
-        dtOutcome_all[:,tx] = dtOutcomeX[:,0]
+        dtOutcome_all_train[:,tx] = dtOutcomeX[:,0]
         dtOutcomeX[:] = ''
         
-        for row in range(np.shape(dtOutcome_all)[0]):
-            labels_outcome, counts_outcome = np.unique(dtOutcome_all[row, np.arange(tx+1)], return_counts = 1)
+        for row in range(np.shape(dtOutcome_all_train)[0]):
+            labels_outcome, counts_outcome = np.unique(dtOutcome_all_train[row, np.arange(tx+1)], return_counts = 1)
             dtOutcomeX[row,0] = labels_outcome[int(np.argmax(counts_outcome, axis = 0))]
         
         sum_error = np.where(dtOutcomeX[:,0] != trainData[:,16])
         sum_error = sum_error[0]
-        avg_PredictionError[tx] = np.shape(sum_error)[0] / np.shape(trainData)[0]
+        avg_PredictionError_train[tx] = np.shape(sum_error)[0] / np.shape(trainData)[0]
         
+        ### test data
+        dtOutcomeX = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, testData)
+        dtOutcome_all_test[:,tx] = dtOutcomeX[:,0]
+        dtOutcomeX[:] = ''
+        
+        for row in range(np.shape(dtOutcome_all_test)[0]):
+            labels_outcome, counts_outcome = np.unique(dtOutcome_all_test[row, np.arange(tx+1)], return_counts = 1)
+            dtOutcomeX[row,0] = labels_outcome[int(np.argmax(counts_outcome, axis = 0))]
+       
+        sum_error = np.where(dtOutcomeX[:,0] != testData[:,16])
+        sum_error = sum_error[0]
+        avg_PredictionError_test[tx] = np.shape(sum_error)[0] / np.shape(testData)[0]
+        
+
         fig1 = plt.gcf()
-        plt.plot(np.arange(tx+1) , avg_PredictionError[np.arange(tx+1)])
+        plt.plot(np.arange(tx+1) , avg_PredictionError_train[np.arange(tx+1)], color='blue', label='Training Data')
+        plt.plot(np.arange(tx+1) , avg_PredictionError_test[np.arange(tx+1)], color='red', label='Test Data')
         plt.xlabel('Iterations')
         plt.ylabel('Prediction Error')
         plt.title('Bagged Decision Tree')
+        plt.legend()
         # plt.show()
-        fig1.savefig('test_error.png', dpi=300)
+        fig1.savefig(chpc_path + 'test_train_error.png', dpi=300)
         
-        pd.concat([pd.DataFrame([avg_PredictionError])]).to_csv(
-                'bank_' + data_file_name + '_baggedTrees_error_' + 
-                str(level) + '_unknownAsAttr.csv', index = True, header = True)
-            
-            
-            # if isCategory:
-            #     pd.concat([pd.DataFrame([avg_PredictionError])]).to_csv(
-            #                    'bank_' + data_file_name + '_baggedTrees_error_' + 
-            #                    str(level) + '_unknownAsAttr.csv', index = True, header = True)
-            # else:    
-            #     pd.concat([pd.DataFrame([avg_PredictionError])]).to_csv(
-            #                    'bank_' + data_file_name + '_baggedTrees_error_' + 
-            #                    str(level) + '_unknownNotAttr.csv', index = True, header = True)
-            
-            # decisionTree = {'decisionTree_attr':decisionTree_attr, 'decisionTree_ctgr':decisionTree_ctgr, 'dtOutcome':dtOutcome}
-            # if isCategory:
-            #     np.savetxt('band_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_unknownAsAttr.csv', [decisionTree], delimiter=',', fmt='%s')        
-            # else:    
-            #     np.savetxt('bank_dt_' + data_file_name + '_' + algorithmType + '_' + str(level) + '_unknownNotAttr.csv', [decisionTree], delimiter=',', fmt='%s')
+        plt.clf()
+        # pd.concat([pd.DataFrame(avg_PredictionError_train)]).to_csv(
+        #         'bank_' + data_file_name + '_baggedTrees_error_' + 
+        #         str(tx) + '_unknownAsAttr.csv', index = True, header = True)
         
+        # pd.concat([pd.DataFrame(avg_PredictionError_test)]).to_csv(
+        #         'bank_test_baggedTrees_error_' + str(tx) + '_unknownAsAttr.csv', index = True, header = True)
+        
+        pd.concat([pd.DataFrame(dtOutcome_all_train)]).to_csv(
+                'bank_baggedTrees_allPredictions_unknownAsAttr_train.csv', index = True, header = True)
             
-    
+        
+        pd.concat([pd.DataFrame(dtOutcome_all_test)]).to_csv(
+                'bank_baggedTrees_allPredictions_unknownAsAttr_test.csv', index = True, header = True)
+        
     
     
 

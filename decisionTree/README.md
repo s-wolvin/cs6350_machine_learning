@@ -1,4 +1,4 @@
-# Homework 1
+# HW 1: Decision Trees
 These folders hold the decision tree algorithms for categorical and numerical data. More specifically, the categorical folder contains the code for problem 2 and the numerical folder contains the code for problem 3. Calibrate.csv is the tennis dataset, which was used to check the accuracy of the python code in subsequent folders. 
 
 ## categorical_decision_tree:

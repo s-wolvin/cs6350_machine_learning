@@ -66,7 +66,7 @@ maxTreeDepth = 16
 algorithmType = 'Entropy'
 
 # number of iterations
-T = 500
+T = 100
 
 # Number of sampled datasets
 S = 100
@@ -80,7 +80,7 @@ replacement_s = False
 s_samples = 1000
 
 # Data set
-data_file_name = 'test'
+data_file_name = 'train'
 data_file = 'bank-1/' + data_file_name + '.csv'
 
 # column labels
@@ -103,9 +103,13 @@ def main():
     trainData = pd.read_csv(data_file, sep=',', header=None)
     trainData = trainData.to_numpy()
     
+    testData = pd.read_csv('bank-1/test.csv', sep=',', header=None)
+    testData = testData.to_numpy()
+    
     ### Use 'Unknown' As A Particular Attribute Value
     if not(isCategory):
         trainData = replaceUnknowns(trainData)
+        testData = replaceUnknowns(testData)
     
     ### Create Dictionary and Change Numeric Values Into Categorical Values
     attr_dict = {}
@@ -116,14 +120,21 @@ def main():
                 
                 nan_loc = np.where(trainData[:,idx] == 'nan')
                 num_loc = np.where(trainData[:,idx] != 'nan')
-                
                 median_numeric  = np.median(trainData[num_loc[0],idx])
-                
                 lower = np.where(trainData[:,idx] < median_numeric)
                 upper = np.where(trainData[:,idx] >= median_numeric)
                 trainData[lower,idx] = 'lower'
                 trainData[upper,idx] = 'upper'
                 trainData[nan_loc[0],idx] = 'nan'
+                
+                nan_loc = np.where(testData[:,idx] == 'nan')
+                num_loc = np.where(testData[:,idx] != 'nan')
+                median_numeric  = np.median(testData[num_loc[0],idx])
+                lower = np.where(testData[:,idx] < median_numeric)
+                upper = np.where(testData[:,idx] >= median_numeric)
+                testData[lower,idx] = 'lower'
+                testData[upper,idx] = 'upper'
+                testData[nan_loc[0],idx] = 'nan'
                 
             else:
                 attr_dict.update({labels[idx]: ['lower','upper']})   
@@ -133,6 +144,13 @@ def main():
                 upper = np.where(trainData[:,idx] >= median_numeric)
                 trainData[lower,idx] = 'lower'
                 trainData[upper,idx] = 'upper'
+                
+                median_numeric  = np.median(testData[:,idx])
+            
+                lower = np.where(testData[:,idx] < median_numeric)
+                upper = np.where(testData[:,idx] >= median_numeric)
+                testData[lower,idx] = 'lower'
+                testData[upper,idx] = 'upper'
             
         else:
             attr_dict.update({labels[idx]: np.unique(trainData[:,idx]).tolist()})
@@ -143,7 +161,8 @@ def main():
         trainDataSample = drawDataSamples(trainData, replacement_s, s_samples)
     
         ### Array to Hold Outcomes
-        dtOutcome_all = np.zeros([np.shape(trainData)[0],T], dtype=object)        
+        dtOutcome_all_train = np.zeros([np.shape(trainData)[0],T], dtype=object)   
+        dtOutcome_all_test = np.zeros([np.shape(testData)[0],T], dtype=object)  
         
         ### Loop Through Each Iteration to Create a Forest of Stumps
         for tx in range(0, T):
@@ -210,20 +229,31 @@ def main():
             
             ### Find Decision Tree Outcome
             dtOutcomeX = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, trainData)
-            dtOutcome_all[:,tx] = dtOutcomeX[:,0]
+            dtOutcome_all_train[:,tx] = dtOutcomeX[:,0]
             dtOutcomeX[:] = ''
             
-            for row in range(np.shape(dtOutcome_all)[0]):
-                labels_outcome, counts_outcome = np.unique(dtOutcome_all[row, np.arange(tx+1)], return_counts = 1)
+            for row in range(np.shape(dtOutcome_all_train)[0]):
+                labels_outcome, counts_outcome = np.unique(dtOutcome_all_train[row, np.arange(tx+1)], return_counts = 1)
                 dtOutcomeX[row,0] = labels_outcome[int(np.argmax(counts_outcome, axis = 0))]
             
-            pd.concat([pd.DataFrame([dtOutcome_all])]).to_csv(
+            pd.concat([pd.DataFrame(dtOutcome_all_train)]).to_csv(
                     'bank_' + data_file_name + '_baggedTrees_outcomes_' + 
                     str(sx) + '_1000samples.csv', index = True, header = True)
             
+            dtOutcomeX = mostLikelyOutcome(decisionTree_attr, decisionTree_ctgr, testData)
+            dtOutcome_all_test[:,tx] = dtOutcomeX[:,0]
+            dtOutcomeX[:] = ''
+            
+            # for row in range(np.shape(dtOutcome_all_test)[0]):
+            #     labels_outcome, counts_outcome = np.unique(dtOutcome_all_test[row, np.arange(tx+1)], return_counts = 1)
+            #     dtOutcomeX[row,0] = labels_outcome[int(np.argmax(counts_outcome, axis = 0))]
     
-    
-    
+            pd.concat([pd.DataFrame(dtOutcome_all_test)]).to_csv(
+                    'bank_test_baggedTrees_outcomes_' + 
+                    str(sx) + '_1000samples.csv', index = True, header = True)
+            
+            
+            
 
 #%% Replace the Unknown Value with the Most Common Value
 

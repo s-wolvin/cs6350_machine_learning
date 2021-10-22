@@ -6,3 +6,5 @@ CS6350 in University of Utah
 Homework 1: decisionTree
 
 Homework 2: ensembleLearning, linearRegression
+
+Homework 3: perceptron

@@ -4,8 +4,9 @@ trees for the bank marketing dataset in HW1.
 
 ## Adaboost Decision Tree
 ### adaBoost_decisionTree_numerical.py <br />
+Implement adaboost decision trees for the bank dataset. This python script outputs plots 'test_train_error_adaboost_stumps.png' and 'test_train_error_adaboost_all.png' which shows the training and test errors at each stump and at each iteration. <br />
 
-run_adaboost.sh
+run_adaboost.sh - shell script which runs adaBoost_decisionTree_numerical.py using python3.8
 
 ## Bagged Decision Trees
 ### baggedTrees_decisionTree.py <br />

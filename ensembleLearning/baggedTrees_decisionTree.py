@@ -69,7 +69,6 @@ n_samples = 5000
 # Data set
 data_file_name = 'train'
 data_file = 'bank-1/' + data_file_name + '.csv'
-chpc_path = '/uufs/chpc.utah.edu/common/home/u1324060/cs6350/'
 
 # column labels
 labels = ['age', 'job', 'marital','education','default','balance','housing',\
@@ -88,10 +87,10 @@ isCategory = True
 def main():
     ### Load Data
     print('Load data and attributes...')
-    trainData = pd.read_csv(chpc_path + data_file, sep=',', header=None)
+    trainData = pd.read_csv(data_file, sep=',', header=None)
     trainData = trainData.to_numpy()
     
-    testData = pd.read_csv(chpc_path + 'bank-1/test.csv', sep=',', header=None)
+    testData = pd.read_csv('bank-1/test.csv', sep=',', header=None)
     testData = testData.to_numpy()
     
     ### Use 'Unknown' As A Particular Attribute Value
@@ -248,7 +247,7 @@ def main():
         plt.title('Bagged Decision Tree')
         plt.legend()
         # plt.show()
-        fig1.savefig(chpc_path + 'test_train_error.png', dpi=300)
+        fig1.savefig('test_train_error.png', dpi=300)
         
         plt.clf()
         # pd.concat([pd.DataFrame(avg_PredictionError_train)]).to_csv(

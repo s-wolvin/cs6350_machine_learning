@@ -21,13 +21,14 @@
 import pandas as pd 
 import numpy as np
 import scipy.optimize as spo
-from scipy.optimize import minimize, Bounds, NonlinearConstraint
+from datetime import datetime
+
 
 
 
 #%% Variable Presets
 
-C = 100/873
+C = [100, 500, 700]
 
 # Data set
 data_file_train = 'train'
@@ -35,19 +36,13 @@ data_file_test = 'test'
 
 data_folder = 'bank-note/'
 
-weightedVector = np.array([0,0,0,0,0])
-
-# if C == (100/873):
-#     lr = 0.00095
-# elif C == (500/873):
-#     lr = 0.005
-# elif C == (700/873):
-#     lr = 0.0075
 
 
 
 #%% Load Data
-    
+
+print('Load Data...')
+
 trainData = pd.read_csv(data_folder + data_file_train + '.csv', sep=',', header=None)
 trainData = trainData.to_numpy()
 trainData[np.where(trainData[:,4] == 0), 4] = -1
@@ -61,74 +56,58 @@ testData[np.where(testData[:,4] == 0), 4] = -1
 
 
 
-#%% 
 
-def fun(a, y, x):
-    value1 = [a[i]*y[i]*x[i,:] for i in range(np.shape(x)[0])]
-    value2 = [a[j]*y[j]*x[j,:] for j in range(np.shape(x)[0])]
-    value12 = np.sum([np.dot(value1[ij], value2[ij]) for ij in range(np.shape(x)[0])])
+#%% Functions
+
+def objective_func(a):
+    summation1 = np.sum(np.array([(a[i]*y[i]*x[i,:]) for i in range(np.shape(a)[0])]), axis=0)
+    summation2 = np.sum(np.array([(a[j]*y[j]*x[j,:]) for j in range(np.shape(a)[0])]), axis=0)
+    component1 = np.dot(summation1, summation2)
+    component2 = np.sum(a)
     
-    value3 = np.sum(a)
+    return component1 - component2
+
+
+def equality_constraint(a):
+    iteration = [(a[i]*y[i]) for i in range(np.shape(a)[0])]
     
-    return ((1/2)*np.sum(value12)) - value3
+    return np.sum(iteration)
 
-# def fun(a0, y, x):
-#     value1 = np.sum(np.array([y[i]*x[i,:] for i in range(np.shape(x)[0])]), axis=0)
-#     value2 = np.sum(np.array([y[j]*x[j,:] for j in range(np.shape(x)[0])]), axis=0)
-#     value12 = np.dot(value1, value2)
+constraint1 = {'type': 'eq', 'fun': equality_constraint}
+
+
+
+
+#%% Calculate Minimization, Weight Vector, and Bias
+
+for Cx in C:
+    # Bounds
+    bnds = [(0, (Cx/873))] * np.shape(trainData)[0]
     
-#     value3 = np.sum(a0)
     
-#     return ((1/2)*np.sum(value12)) - value3
-
-
-
-#%%
-
-def constraint(a):
-    return np.sum([a[k]*y[k] for k in range(np.shape(a)[0])])
-
-
-
-#%% Minimize problem 
+    # Calculate Minimization
+    print('Calculate Alpha Values for C = ' + str(Cx) + '/' + str(873) + '...')
     
-a0 = np.ones([np.shape(x)[0], 1])*C
-print(fun(a0, y, x))
-
-# bnds = (0, C)
-bound = Bounds(0, C)
-
-con = {'type':'eq', 'fun': constraint}
-
-# eq_cons = ({'type':'eq', 'fun' : lambda a0: np.sum([a0[k]*y[k] for k in range(np.shape(a0)[0])])})
-
-# nlc = NonlinearConstraint(const, )
-
-# res = minimize(fun, a0, args=(y, x), method='SLSQP', bounds=bound)
-
-res = minimize(fun, a0, args=(y, x), method='SLSQP', bounds=bound, constraints=con)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    a0 = [0] * np.shape(x)[0]
+    
+    start_time = datetime.now()
+    result = spo.minimize(objective_func, a0, method='SLSQP', bounds=bnds, constraints=[constraint1])
+    end_time = datetime.now()
+    
+    print(result.message + ': ' + 'Duration: ' + str(end_time - start_time))
+    
+    
+    # Calculate Weighted Vector and Bias
+    a = result.x
+    
+    weightedVector = np.array([(a[i]*y[i]*x[i,:]) for i in range(np.shape(x)[0])])
+    weightedVector = np.sum(weightedVector, axis=0)
+    print('Weight Vector: ' + str(weightedVector))
+    
+    bias = [(y[j] - np.dot(weightedVector, x[j,:])) for j in range(np.shape(x)[0])]
+    bias = np.mean(bias)
+    print('Bias: ' + str(bias))
+    print('')
 
 
 

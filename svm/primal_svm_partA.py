@@ -33,8 +33,8 @@ import random as rd
 #%% Variable Presets
 
 # hyperparameter
-C = 700/873
-C_name = '700-873'
+C = 100/873
+C_name = '100-873'
 
 # max epochs
 maxEpoch = 100
@@ -48,7 +48,7 @@ data_folder = 'bank-note/'
 weightedVector = np.array([0,0,0,0,0])
 
 if C == (100/873):
-    lr = 0.00095
+    lr = 0.00096
     a = 0.000082   
 elif C == (500/873):
     lr = 0.005

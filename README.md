@@ -8,3 +8,5 @@ Homework 1: decisionTree
 Homework 2: ensembleLearning, linearRegression
 
 Homework 3: perceptron
+
+Homework 4: svm

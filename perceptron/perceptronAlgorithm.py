@@ -48,7 +48,7 @@ import random as rd
 #%% Variable Presets
 
 # Type of Perceptron Algorithm: 'Standard', 'Voted', 'Averaged'
-prcptrnAlgorithm = 'Standard'
+prcptrnAlgorithm = 'Voted'
 
 # maximum loops
 maxEpoch = 10

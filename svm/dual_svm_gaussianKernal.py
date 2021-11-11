@@ -61,10 +61,22 @@ y2 = testData[:,4]
 
 #%% Functions
 
-def objective_func(a, kernal):
-    summation1 = np.sum(np.array([(a[i]*y[i]) for i in range(np.shape(a)[0])]), axis=0)
-    summation2 = np.sum(np.array([(a[j]*y[j]) for j in range(np.shape(a)[0])]), axis=0)
-    component1 = summation1*summation2*kernal
+def objective_func(a, gammax):
+    component1 = 0
+    kernal = 0
+    
+    for i in range(np.shape(a)[0]):
+        for j in range(np.shape(a)[0]):
+            kernalx = np.linalg.norm(x[i,:] - x[j,:])**2
+            kernalx = -(kernalx / gammax)
+            kernal += np.exp(kernalx) 
+            component1 += a[j]*y[j]*a[i]*y[i]*kernal
+    
+    component1 = (1/2)*component1
+    # summation1 = np.sum(np.array([(a[i]*y[i]) for i in range(np.shape(a)[0])]), axis=0)
+    # summation2 = np.sum(np.array([(a[j]*y[j]) for j in range(np.shape(a)[0])]), axis=0)
+    
+    # component1 = summation1*summation2*kernal
      
     component2 = np.sum(a)
     
@@ -90,13 +102,13 @@ for Cx in C:
         
         
         # Calculate Kernal
-        kernal = 0
+        # kernal = 0
         
-        for i in range(np.shape(x)[0]):
-            for j in range(np.shape(x)[0]):
-                kernalx = np.linalg.norm(x[i,:] - x[j,:])**2
-                kernalx = -(kernalx / gammax)
-                kernal += np.exp(kernalx)          
+        # for i in range(np.shape(x)[0]):
+        #     for j in range(np.shape(x)[0]):
+        #         kernalx = np.linalg.norm(x[i,:] - x[j,:])**2
+        #         kernalx = -(kernalx / gammax)
+        #         kernal += np.exp(kernalx)          
         
         
         # Calculate Minimization
@@ -105,7 +117,8 @@ for Cx in C:
         a0 = [0] * np.shape(x)[0]
         
         start_time = datetime.now()
-        result = spo.minimize(objective_func, a0, args=(kernal), method='SLSQP', bounds=bnds, constraints=[constraint1])
+        # result = spo.minimize(objective_func, a0, args=(kernal), method='SLSQP', bounds=bnds, constraints=[constraint1])
+        result = spo.minimize(objective_func, a0, args=(gammax), method='SLSQP', bounds=bnds, constraints=[constraint1])
         end_time = datetime.now()
         
         print(result.message + ': ' + 'Duration: ' + str(end_time - start_time))
@@ -132,14 +145,24 @@ for Cx in C:
         print('Training Error: ' + str(train_error))
         
         test_prediction = []
-        for i in range(np.shape(x2)[0]):
+        for i in range(np.shape(x)[0]):
             kernal = 0
             for j in range(np.shape(x2)[0]):
-                kernalx = np.linalg.norm(x2[i,:] - x2[j,:])**2
+                kernalx = np.linalg.norm(x[i,:] - x2[j,:])**2
                 kernalx = -(kernalx / gammax)
                 kernal += np.exp(kernalx)
                 
-            test_prediction.append(a[i]*y2[i]*kernal)
+            test_prediction.append(a[i]*y[i]*kernal)
+        
+        # for j in range(np.shape(x2)[0]):
+        #     kernal = 0
+        #     for i in range(np.shape(x)[0]):
+        #         kernalx = np.linalg.norm(x[i,:] - x2[j,:])**2
+        #         kernalx = -(kernalx / gammax)
+        #         kernal += np.exp(kernalx)
+                
+        #     test_prediction.append(a[i]*y[i]*kernal)
+        
         
         test_prediction = np.sign(test_prediction)
         test_error = [0]

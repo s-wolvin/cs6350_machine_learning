@@ -69,8 +69,10 @@ def objective_func(a, gammax):
         for j in range(np.shape(a)[0]):
             kernalx = np.linalg.norm(x[i,:] - x[j,:])**2
             kernalx = -(kernalx / gammax)
-            kernal += np.exp(kernalx) 
+            kernal = np.exp(kernalx) 
             component1 += a[j]*y[j]*a[i]*y[i]*kernal
+            
+            kernal = 0
     
     component1 = (1/2)*component1
     # summation1 = np.sum(np.array([(a[i]*y[i]) for i in range(np.shape(a)[0])]), axis=0)

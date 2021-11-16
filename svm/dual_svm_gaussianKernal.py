@@ -22,7 +22,7 @@ import pandas as pd
 import numpy as np
 import scipy.optimize as spo
 from datetime import datetime
-
+import itertools as it
 
 
 
@@ -86,6 +86,8 @@ constraint1 = {'type': 'eq', 'fun': equality_constraint}
 #%% Calculate Minimization, Weight Vector, and Bias
 
 for Cx in C:
+    if_sv = np.zeros([np.shape(trainData)[0], len(gamma)])
+    
     for gammax in gamma:    
         # Bounds
         bnds = [(0, (Cx/873))] * np.shape(trainData)[0]
@@ -109,6 +111,7 @@ for Cx in C:
             end_time = datetime.now()
             
             print(result.message + ': ' + 'Duration: ' + str(end_time - start_time))
+            print('')
              
             # Calculate Weighted Vector and Bias
             a = result.x
@@ -143,11 +146,27 @@ for Cx in C:
             test_error = np.sum(test_error) / np.shape(y2)[0]
             
             print('Test Error: ' + str(test_error))
+            print('')
+            
+            numSV = np.sum(a > 0.00001)
+            if_sv[a > 0.00001, gamma.index(gammax)] = 1
+            print('Number of Support Vectors: ' + str(numSV))
+            
+
+            print('')
+            print('')
         except: 
             print('Failed for Alpha Values for C = ' + str(Cx) + '/' + str(873) + ' and gamma = ' + str(gammax) + '...')
+            print('')
+            print('')
         
-        
-
+    comb = it.combinations(range(len(gamma)), 2)
+    
+    for i in comb:
+        same_a = np.sum(if_sv[:, [i[0], i[1]]], axis=1)
+        print('For gamma = ' + str(gamma[i[0]]) + ' & ' + str(gamma[i[1]]) + ', there are ' + str(np.sum(same_a == 2)) + ' similar support vectors')
+    
+    
         
 
 

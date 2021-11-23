@@ -10,3 +10,5 @@ Homework 2: ensembleLearning, linearRegression
 Homework 3: perceptron
 
 Homework 4: svm
+
+Homework 5: neuralNetworks, logisticRegression

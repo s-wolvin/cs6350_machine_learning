@@ -38,6 +38,8 @@ depth = 2
 trainData = pd.read_csv(data_folder + data_file_train + '.csv', sep=',', header=None)
 trainData = trainData.to_numpy()
 trainData[np.where(trainData[:,4] == 0), 4] = -1
+X = trainData[:,range(4)]
+Y = trainData[:,4]
 
 testData = pd.read_csv(data_folder + data_file_test + '.csv', sep=',', header=None)
 testData = testData.to_numpy()
@@ -54,9 +56,27 @@ def sigmoid(z):
 
 #%%  Initialize the layers
 
-z_hidden_layer = np.random.normal(0, 1, (depth, width))
+def initialize_layers(initial_width):
+    w_layer = {}
+
+    for dx in range(depth):
+        w_layer[dx] = np.append(np.array(1), np.random.normal(0, 1, (1, width-1)))
+    
+    return w_layer
 
 
+
+
+#%% Forward propagation
+
+def forward_prop(z_layer, X):
+    for dx in range(depth):
+        
+    
+    
+    
+    
+    
 
 weighted_vector = np.ones((np.shape(trainData)[1]-1))
 
@@ -65,7 +85,7 @@ for t in range(max_epoch):
     rand_idx = rd.sample(range(0, np.shape(trainData)[0]), np.shape(trainData)[0])
     trainDataX = trainData[rand_idx, :]
     
-    for ex in range(np.shape(trainDataX)[0]):
+    # for ex in range(np.shape(trainDataX)[0]):
         
 
 

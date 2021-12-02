@@ -103,7 +103,7 @@ def forward_prop(X_rand_ex):
     Z1 = sigmoid(z)
         
     for dx in range(1,depth+1):
-        z_layer[dx] = np.append(1, Z1)
+        z_layer[dx] = np.expand_dims(np.append(1, Z1), axis=1)
         z = w_layer[dx].dot(Z1) + b_layer[dx]
         Z1 = sigmoid(z)
     
@@ -115,42 +115,42 @@ def forward_prop(X_rand_ex):
 #%% Backward Propagation
 
 def backward_prop(y_star, y, z_layer, X_rand_ex):
-    # gradient_loss = {}
+    gradient_loss = {}
     z_layer[0] = X_rand_ex
     
-    # cashe_array = (y - y_star) # cashe this value
+    cashe_array = (y - y_star) # cashe this value
     
-    # # output layer
-    # dL_output = cashe_array * z_layer[depth]
-    # gradient_loss[depth] = dL_output
+    # output layer
+    dL_output = cashe_array * z_layer[depth].T
+    gradient_loss[depth] = dL_output
     
-    # # z = 2
-    # cashe_array = cashe_array.T * w_layer[2] # dL/dy * dy/dz
-    # cashe_array_z_1_z = cashe_array * z_layer[2][1:] * (1 - z_layer[2][1:])
-    # gradient_loss[2-1] = np.expand_dims(z_layer[2-1], axis=1).dot(cashe_array_z_1_z).T
+    # z = 2
+    cashe_array = cashe_array * w_layer[2] # dL/dy * dy/dz
+    cashe_array_z_1_z = cashe_array * z_layer[2][1:].T * (1 - z_layer[2][1:].T)
+    gradient_loss[2-1] = np.dot(z_layer[2-1], cashe_array_z_1_z).T
     
-    # # z = 1
-    # cashe_array = cashe_array.T * w_layer[1] # dL/dy * dy/dz
-    # cashe_array_z_1_z = cashe_array * z_layer[1][1:] * (1 - z_layer[1][1:])
-    # gradient_loss[1-1] = np.expand_dims(z_layer[1-1], axis=1).dot(cashe_array_z_1_z).T
+    # z = 1
+    cashe_array = cashe_array.T * w_layer[1] # dL/dy * dy/dz
+    cashe_array_z_1_z = cashe_array * z_layer[1][1:] * (1 - z_layer[1][1:])
+    gradient_loss[1-1] = np.expand_dims(z_layer[1-1], axis=1).dot(cashe_array_z_1_z).T
     
-    # initial variables
-    gradient_loss_1 = {}
-    cashe_array = np.array(y - y_star) # cashe this value
+    # # initial variables
+    # gradient_loss_1 = {}
+    # cashe_array = np.array(y - y_star) # cashe this value
     
-    # Calculate output layer
-    gradient_loss_1[depth] = cashe_array * z_layer[depth]
+    # # Calculate output layer
+    # gradient_loss_1[depth] = cashe_array * z_layer[depth]
 
-    # loop through hidden layers
-    for lx in range(depth, 0, -1):
-        print(lx)
-        cashe_array = cashe_array.T * w_layer[lx] # dL/dy * dy/dz
-        cashe_array_z_1_z = cashe_array * z_layer[lx][1:] * (z_layer[lx][1:] - 1)
-        z_layer_x = np.tile(np.expand_dims(z_layer[lx-1], axis=1), np.shape(cashe_array_z_1_z)[0]) 
+    # # loop through hidden layers
+    # for lx in range(depth, 0, -1):
+    #     print(lx)
+    #     cashe_array = cashe_array.T * w_layer[lx] # dL/dy * dy/dz
+    #     cashe_array_z_1_z = cashe_array * z_layer[lx][1:] * (z_layer[lx][1:] - 1)
+    #     z_layer_x = np.tile(np.expand_dims(z_layer[lx-1], axis=1), np.shape(cashe_array_z_1_z)[0]) 
         
-        gradient_loss_1[lx-1] = z_layer_x.dot(cashe_array_z_1_z).T
+    #     gradient_loss_1[lx-1] = z_layer_x.dot(cashe_array_z_1_z).T
     
-    return gradient_loss_1
+    return gradient_loss
 
 
 

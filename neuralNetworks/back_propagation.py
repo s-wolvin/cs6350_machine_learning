@@ -11,6 +11,7 @@
 
 #%% Global imports
 import numpy as np
+import unicodedata
 
 
 
@@ -46,112 +47,55 @@ def backward_prop(y_star, y, z_layer, X_rand_ex):
     gradient_loss = {}
     z_layer[0] = np.asarray([X_rand_ex]).T
     
-    cashe_array = (y - y_star) # cashe this value
+    cashe_array = np.asarray([[(y - y_star)]]) # cashe this value
     
     # output layer
     dL_output = cashe_array * z_layer[depth].T
     gradient_loss[depth] = dL_output
     
-    # z = 2
-    cashe_array = np.tile(cashe_array, (np.shape(w_layer[2])[0],1)) * w_layer[2]
-    # cashe_array = cashe_array * w_layer[2] # dL/dy * dy/dz
-    cashe_array_z_1_z = cashe_array * z_layer[2][1:].T * (1 - z_layer[2][1:].T)
-    gradient_loss[2-1] = np.dot(z_layer[2-1], cashe_array_z_1_z).T
     
-    # z = 1
-    cashe_array = np.multiply(np.tile(cashe_array, (np.shape(w_layer[1])[0],1)), w_layer[1].T)
-    
-    # cashe_array = cashe_array * w_layer[1] # dL/dy * dy/dz
-    cashe_array_z_1_z = cashe_array * z_layer[1][1:] * (1 - z_layer[1][1:])
-    gradient_loss[1-1] = np.multiply(z_layer[1-1][1:], cashe_array_z_1_z)
-    
-    
-    
-    gradient_loss[1-1] = np.multipy(z_layer[1-1], cashe_array_z_1_z).T
-    gradient_loss[1-1] = np.expand_dims(z_layer[1-1], axis=1).dot(cashe_array_z_1_z).T
-    
-    
-    #####################################################################
-    
-    
-    # gradient_loss = {}
-    # z_layer[0] = X_rand_ex
-    
-    # cashe_array = np.asarray(y - y_star) # cashe this value
-    
-    # # output layer
-    # gradient_loss[depth] = np.expand_dims(cashe_array * z_layer[depth], axis=0)
-    # cashe_array = cashe_array.T
-    
-    # # z = 2
-    # cashe_array = cashe_array * w_layer[2] # dL/dy * dy/dz
-    # cashe_array_z_1_z = cashe_array * z_layer[2][1:] * (z_layer[2][1:] - 1)
-    # # cashe_array_z_1_z = np.reshape(cashe_array_z_1_z, (1,-1))
-    # z_layer_x = np.tile(np.expand_dims(z_layer[2-1], axis=1), np.shape(cashe_array_z_1_z)[0])  
-    
-    # gradient_loss[2-1] = z_layer_x.dot(cashe_array_z_1_z).T
-    
-    # # z = 1
-    # cashe_array = cashe_array.T * w_layer[1] # dL/dy * dy/dz
-    # cashe_array_z_1_z = cashe_array * z_layer[1][1:] * (z_layer[1][1:] - 1)
-    # # cashe_array_z_1_z = np.reshape(cashe_array_z_1_z, (1,-1))
-    # z_layer_x = np.tile(np.expand_dims(z_layer[1-1], axis=1), np.shape(cashe_array_z_1_z)[0])   
-    
-    # gradient_loss[1-1] = z_layer_x.dot(cashe_array_z_1_z).T
-    
-    
-    ###################################################################
-    
-    
-    # initial variables
-    gradient_loss_1 = {}
-    cashe_array = np.asarray(y - y_star) # cashe this value
-    
-    # Calculate output layer
-    gradient_loss_1[depth] = np.expand_dims(cashe_array * z_layer[depth], axis=0)
-
-    # loop through hidden layers
     for lx in range(depth, 0, -1):
-        print(lx)
-        cashe_array = cashe_array.T * w_layer[lx] # dL/dy * dy/dz
-        cashe_array_z_1_z = cashe_array * z_layer[lx][1:] * (z_layer[lx][1:] - 1)
-        z_layer_x = np.tile(np.expand_dims(z_layer[lx-1], axis=1), np.shape(cashe_array_z_1_z)[0]) 
+        # cashe_array = np.multiply(np.tile(cashe_array, (np.shape(w_layer[lx])[0],1)), w_layer[lx])
+        cashe_array = cashe_array.T * w_layer[lx]
         
-        gradient_loss_1[lx-1] = z_layer_x.dot(cashe_array_z_1_z).T
+        cashe_array_z_1_z = cashe_array * z_layer[lx][1:].T * (z_layer[lx][1:].T - 1)
+        
+        multiplied_values = [np.transpose(np.sum(z_value*cashe_array_z_1_z, axis=0)) for z_value in z_layer[lx-1]]
+        
+        gradient_loss[lx-1] = np.column_stack(multiplied_values)  
         
     
-    return gradient_loss, gradient_loss_1
+    return gradient_loss
 
 
 
-#%%
+#%% Calculate gradients and print values
 
-gradientLoss, gradient_loss_1 = backward_prop(y_star, y, z_layer, X_rand_ex)
-
-
+gradientLoss = backward_prop(y_star, y, z_layer, X_rand_ex)
 
 
+names = [unicodedata.name(chr(c)) for c in range(0, 0x10FFFF+1) if unicodedata.name(chr(c), None)]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+print('Output Layer')
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT THREE}\N{SUBSCRIPT ZERO}\N{SUBSCRIPT ONE} = " + str(gradientLoss[2][0,0]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT THREE}\N{SUBSCRIPT ONE}\N{SUBSCRIPT ONE} = "  + str(gradientLoss[2][0,1]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT THREE}\N{SUBSCRIPT TWO}\N{SUBSCRIPT ONE} = "  + str(gradientLoss[2][0,2]))
+print("")
+print("Hidden Layer")
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT TWO}\N{SUBSCRIPT ZERO}\N{SUBSCRIPT ONE} = " + str(gradientLoss[1][0,0]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT TWO}\N{SUBSCRIPT ONE}\N{SUBSCRIPT ONE} = "  + str(gradientLoss[1][0,1]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT TWO}\N{SUBSCRIPT TWO}\N{SUBSCRIPT ONE} = "  + str(gradientLoss[1][0,2]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT TWO}\N{SUBSCRIPT ZERO}\N{SUBSCRIPT TWO} = " + str(gradientLoss[1][1,0]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT TWO}\N{SUBSCRIPT ONE}\N{SUBSCRIPT TWO} = "  + str(gradientLoss[1][1,1]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT TWO}\N{SUBSCRIPT TWO}\N{SUBSCRIPT TWO} = "  + str(gradientLoss[1][1,2]))
+print("")
+print("Input Layer")
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT ONE}\N{SUBSCRIPT ZERO}\N{SUBSCRIPT ONE} = " + str(gradientLoss[0][0,0]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT ONE}\N{SUBSCRIPT ONE}\N{SUBSCRIPT ONE} = "  + str(gradientLoss[0][0,1]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT ONE}\N{SUBSCRIPT TWO}\N{SUBSCRIPT ONE} = "  + str(gradientLoss[0][0,2]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT ONE}\N{SUBSCRIPT ZERO}\N{SUBSCRIPT TWO} = " + str(gradientLoss[0][1,0]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT ONE}\N{SUBSCRIPT ONE}\N{SUBSCRIPT TWO} = "  + str(gradientLoss[0][1,1]))
+print("Gradient Loss for \N{GREEK SMALL LETTER DELTA}L/\N{GREEK SMALL LETTER DELTA}w\N{SUPERSCRIPT ONE}\N{SUBSCRIPT TWO}\N{SUBSCRIPT TWO} = "  + str(gradientLoss[0][1,2]))
 
 
 

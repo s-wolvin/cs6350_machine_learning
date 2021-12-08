@@ -1,6 +1,6 @@
 ## Savanna Wolvin
 # Created: Nov. 29th, 2021
-# Edited: Dec. 1st, 2021
+# Edited: Dec. 7st, 2021
     
 # SUMMARY
 
@@ -25,12 +25,55 @@ data_file_test = 'test'
 
 data_folder = 'bank-note/'
 
-max_epoch = 100
+random_vars = True
 
-lr_0 = 0.000001
+width = 5
 
-width = 10
-depth = 4
+min_epoch = 25
+max_epoch = 500
+
+if random_vars:
+    if width == 5:
+        depth = 2
+        lr_0 = 0.00040
+        
+    elif width == 10:
+        depth = 4 #10
+        lr_0 = 0.0002 
+        
+    elif width == 25:
+        depth = 4
+        lr_0 = 0.0007
+        
+    elif width == 50:
+        depth = 5
+        lr_0 = 0.0006
+        
+    elif width == 100:
+        depth = 4
+        lr_0 = 0.0006
+        
+else:
+    if width == 5:
+        depth = 5
+        lr_0 = 0.0005
+        
+    elif width == 10:
+        depth = 4 #10
+        lr_0 = 0.0002 
+        
+    elif width == 25:
+        depth = 4
+        lr_0 = 0.0007
+        
+    elif width == 50:
+        depth = 5
+        lr_0 = 0.0006
+        
+    elif width == 100:
+        depth = 4
+        lr_0 = 0.0006
+
 
 
 
@@ -89,7 +132,10 @@ def initialize_layers():
     b_layer = {}
 
     for dx in range(depth+1):
-        w_layer[dx] = np.random.normal(0, 1, (num_nodes[dx+1], num_nodes[dx]))
+        if random_vars:
+            w_layer[dx] = np.random.normal(0, 1, (num_nodes[dx+1], num_nodes[dx]))
+        else:
+            w_layer[dx] = np.zeros((num_nodes[dx+1], num_nodes[dx]))
         b_layer[dx] = np.ones((num_nodes[dx+1], 1))
     
     return w_layer, b_layer
@@ -145,8 +191,8 @@ def backward_prop(y_star, y, z_layer, X_rand_ex):
     
     return gradient_loss
 
-
-
+ 
+   
 
 #%% Train Neural Network
 
@@ -155,14 +201,18 @@ w_layer, b_layer = initialize_layers() # create data arrays to hold the weight
 
 # Number of times to loop through the entire dataset, change to stop at a 
 # certain value of loss
-L = np.zeros((max_epoch,1))
-for t in range(max_epoch):
+diff_loss = 0
+count = 0
+grad = [0]
+L = []
+
+while (min_epoch > count or np.sum(grad) < -0.10) and max_epoch > count:
     # shuffle dataset
     rand_idx = rd.sample(range(0, np.shape(X)[0]), np.shape(X)[0])
     X_rand = X[rand_idx, :]
     Y_rand = Y[rand_idx]
     
-    learning_rate = learnRate(t) # learing rate changes every epoch
+    learning_rate = learnRate(count) # learing rate changes every epoch
     
     # loop through each example of the dataset as if it's its own dataset
     for ex in range(np.shape(X_rand)[0]):
@@ -191,60 +241,22 @@ for t in range(max_epoch):
         y_predict[ex] = y
         
     # Calculate Loss
-    L[t,0] = np.sum( (1/2) * (y_predict - Y)**2 )
-    # print("Prediction Loss = " + str(L[t,0]))
-    
-    
-   
-
-#%% Train Neural Network
-
-# w_layer, b_layer = initialize_layers() # create data arrays to hold the weight 
-#                                        # vectors and the bias values
-
-# # Number of times to loop through the entire dataset, change to stop at a 
-# # certain value of loss
-# diff_loss = 0
-# count = 0
-# L = []
-# for t in range(max_epoch):
-#     # shuffle dataset
-#     rand_idx = rd.sample(range(0, np.shape(X)[0]), np.shape(X)[0])
-#     X_rand = X[rand_idx, :]
-#     Y_rand = Y[rand_idx]
-    
-#     learning_rate = learnRate(count) # learing rate changes every epoch
-    
-#     # loop through each example of the dataset as if it's its own dataset
-#     for ex in range(np.shape(X_rand)[0]):
-#         X_rand_ex = np.expand_dims(X_rand[ex,:], axis=1)
+    L.append(np.sum( (1/2) * (y_predict - Y)**2 ))
         
-#         # Forward Propagation
-#         z_layer = {} 
-#         y, z_layer = forward_prop(X_rand_ex, z_layer)
-        
-#         # Backward Propagation
-#         gradientLoss = backward_prop(Y_rand[ex], y, z_layer, X_rand_ex)
-        
-#         # edit wight vector by the back propagation
-#         for layer_x in range(depth+1):
-#             w_layer[layer_x] = w_layer[layer_x] - learning_rate * gradientLoss[layer_x][:,1:]
-#             b_layer[layer_x] = b_layer[layer_x] - learning_rate * np.expand_dims(gradientLoss[layer_x][:,0], axis=1)
-            
-#     # create prediction
-#     y_predict = np.zeros(np.shape(Y)[0])
-#     for ex in range(np.shape(X)[0]):
-#         X_ex = np.expand_dims(X[ex,:], axis=1)
-        
-#         # Forward Propagation
-#         z_layer = {}
-#         y, _ = forward_prop(X_ex, z_layer)
-#         y_predict[ex] = y
-        
-#     # Calculate Loss
-#     L.append(np.sum( (1/2) * (y_predict - Y)**2 ))
+    plt.plot(L)
+    plt.ylabel('Prediction Loss')
+    plt.xlabel('Iteration')
+    plt.title('Prediction Loss as Iteration Increases')
+    plt.show()
     
-#     count += 1
+    grad = np.gradient(np.squeeze(L))
+    
+    if len(grad) == 0:
+        grad = 0
+    else:
+        grad = grad[-1]
+    
+    count += 1
     
     
     
